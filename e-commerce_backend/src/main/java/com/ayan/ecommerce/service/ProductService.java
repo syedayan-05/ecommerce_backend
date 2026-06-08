@@ -1,6 +1,7 @@
 package com.ayan.ecommerce.service;
 
 import com.ayan.ecommerce.entity.Product;
+import com.ayan.ecommerce.exception.ProductNotFoundException;
 import com.ayan.ecommerce.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class ProductService {
 
     public Product getProductById(Long id){
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product NOt Found"));
+                .orElseThrow(() -> new ProductNotFoundException(
+                        "Product Not Found with id " + id));
     }
 }
