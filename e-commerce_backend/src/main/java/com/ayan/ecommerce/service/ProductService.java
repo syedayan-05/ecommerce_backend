@@ -33,4 +33,29 @@ public class ProductService {
                 .orElseThrow(() -> new ProductNotFoundException(
                         "Product Not Found with id " + id));
     }
+
+    public Product updateProduct(Long id,Product updateProduct){
+        Product existingProduct =  repository.findById(id)
+                .orElseThrow(()->
+                        new ProductNotFoundException(
+                                "Product Not Found with id " + id
+                        )
+                );
+        existingProduct.setName(updateProduct.getName());
+        existingProduct.setDescription(updateProduct.getDescription());
+        existingProduct.setPrice(updateProduct.getPrice());
+        existingProduct.setStock(updateProduct.getStock());
+
+        return repository.save(existingProduct);
+    }
+
+    public void deleteProduct(Long id){
+        Product product = repository.findById(id)
+                .orElseThrow(() ->
+                        new ProductNotFoundException(
+                           "Product not found with id " + id
+                        ));
+
+        repository.delete(product);
+    }
 }
