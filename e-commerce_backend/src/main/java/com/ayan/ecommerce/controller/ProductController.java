@@ -4,6 +4,7 @@ import com.ayan.ecommerce.dto.ProductRequestDTO;
 import com.ayan.ecommerce.dto.ProductResponseDTO;
 import com.ayan.ecommerce.entity.Product;
 import com.ayan.ecommerce.service.ProductService;
+import jakarta.validation.Valid;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,8 @@ public class ProductController {
     private ProductService service;
 
     @PostMapping
-    public ProductResponseDTO createProduct(@RequestBody ProductRequestDTO dto){
+    public ProductResponseDTO createProduct(
+            @Valid  @RequestBody ProductRequestDTO dto){
         return service.saveProduct(dto);
     }
 
