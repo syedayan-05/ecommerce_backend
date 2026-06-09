@@ -1,5 +1,7 @@
 package com.ayan.ecommerce.service;
 
+import com.ayan.ecommerce.dto.ProductRequestDTO;
+import com.ayan.ecommerce.dto.ProductResponseDTO;
 import com.ayan.ecommerce.entity.Product;
 import com.ayan.ecommerce.exception.ProductNotFoundException;
 import com.ayan.ecommerce.repository.ProductRepository;
@@ -17,6 +19,28 @@ public class ProductService {
 
     public ProductService(ProductRepository repository) {
         this.repository = repository;
+    }
+
+    private ProductResponseDTO mapToResponse(Product product) {
+
+        return ProductResponseDTO.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .price(product.getPrice())
+                .stock(product.getStock())
+                .createdAt(product.getCreatedAt())
+                .build();
+    }
+
+    private Product mapToEntity(ProductRequestDTO dto){
+        return Product.builder()
+                .name(dto.getName())
+                .description(dto.getDescription())
+                .price(dto.getPrice())
+                .stock(dto.getStock())
+                .build();
+
     }
 
     public Product saveProduct(Product product){
