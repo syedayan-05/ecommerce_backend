@@ -43,9 +43,11 @@ public class ProductService {
 
     }
 
-    public Product saveProduct(Product product){
+    public ProductResponseDTO saveProduct(ProductRequestDTO dto){
+        Product product = mapToEntity(dto);
         product.setCreatedAt(LocalDateTime.now());
-        return repository.save(product);
+        Product savedProduct = repository.save(product);
+        return mapToResponse(savedProduct);
     }
 
     public List<Product> getAllProducts(){

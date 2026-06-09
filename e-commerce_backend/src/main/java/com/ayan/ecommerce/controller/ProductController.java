@@ -1,5 +1,7 @@
 package com.ayan.ecommerce.controller;
 
+import com.ayan.ecommerce.dto.ProductRequestDTO;
+import com.ayan.ecommerce.dto.ProductResponseDTO;
 import com.ayan.ecommerce.entity.Product;
 import com.ayan.ecommerce.service.ProductService;
 import lombok.Getter;
@@ -16,8 +18,8 @@ public class ProductController {
     private ProductService service;
 
     @PostMapping
-    public Product createProduct(@RequestBody Product product){
-        return service.saveProduct(product);
+    public ProductResponseDTO createProduct(@RequestBody ProductRequestDTO dto){
+        return service.saveProduct(dto);
     }
 
     @GetMapping("/all")
