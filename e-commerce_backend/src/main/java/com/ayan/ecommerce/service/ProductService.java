@@ -6,6 +6,10 @@ import com.ayan.ecommerce.entity.Product;
 import com.ayan.ecommerce.exception.ProductNotFoundException;
 import com.ayan.ecommerce.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -84,4 +88,29 @@ public class ProductService {
 
         repository.delete(product);
     }
+
+    public Page<ProductResponseDTO> getAllProduct(
+            int page,
+            int size,
+            String sortBy){
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(sortBy)
+        );
+
+        Page<Product> products =
+                repository.findAll(pageable);
+
+        return products.map(this::mapToResponse);
+
+    }
+
+    public List<ProductResponseDTO> searchProduct(String keyword){
+            return repository.findByNameContainingIgnoreCase(keyword)
+                    .stream()
+                    .map(this::mapToResponse)
+                    .toList();
+    }
+
 }

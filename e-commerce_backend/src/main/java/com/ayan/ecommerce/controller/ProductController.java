@@ -7,6 +7,7 @@ import com.ayan.ecommerce.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -44,5 +45,22 @@ public class ProductController {
     public String deleteProduct(@PathVariable Long id){
         service.deleteProduct(id);
         return "Product deleted successfully";
+    }
+
+    @GetMapping
+    public Page<ProductResponseDTO> getAllProduct(
+            @RequestParam(defaultValue = "0")
+            int page,
+            @RequestParam(defaultValue = "5")
+            int size,
+            @RequestParam(defaultValue = "id")
+            String sortBy){
+
+        return service.getAllProduct(page, size, sortBy);
+    }
+
+    @GetMapping("/search")
+    public List<ProductResponseDTO> searchProduct(@RequestParam String keyword){
+        return service.searchProduct(keyword);
     }
 }
