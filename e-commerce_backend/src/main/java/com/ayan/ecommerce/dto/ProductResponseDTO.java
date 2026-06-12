@@ -17,4 +17,6 @@ public class ProductResponseDTO {
     private BigDecimal price;
     private Integer stock;
     private LocalDateTime createdAt;
+
+    private ProductCategoryDTO category;
 }

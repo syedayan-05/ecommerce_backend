@@ -1,5 +1,6 @@
 package com.ayan.ecommerce.service;
 
+import com.ayan.ecommerce.dto.ProductCategoryDTO;
 import com.ayan.ecommerce.dto.ProductRequestDTO;
 import com.ayan.ecommerce.dto.ProductResponseDTO;
 import com.ayan.ecommerce.entity.Product;
@@ -27,6 +28,16 @@ public class ProductService {
 
     private ProductResponseDTO mapToResponse(Product product) {
 
+        ProductCategoryDTO categoryDTO = null;
+
+        if(product.getCategory() != null){
+
+            categoryDTO = ProductCategoryDTO.builder()
+                    .id(product.getCategory().getId())
+                    .name(product.getCategory().getName())
+                    .build();
+        }
+
         return ProductResponseDTO.builder()
                 .id(product.getId())
                 .name(product.getName())
@@ -34,6 +45,7 @@ public class ProductService {
                 .price(product.getPrice())
                 .stock(product.getStock())
                 .createdAt(product.getCreatedAt())
+                .category(categoryDTO)
                 .build();
     }
 
@@ -54,8 +66,11 @@ public class ProductService {
         return mapToResponse(savedProduct);
     }
 
-    public List<Product> getAllProducts(){
-        return repository.findAll();
+    public List<ProductResponseDTO> getAllProducts(){
+        return repository.findAll().
+                stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     public Product getProductById(Long id){
