@@ -24,4 +24,5 @@ public class ProductRequestDTO {
     @NotNull(message = "Stock is required")
     @PositiveOrZero(message = "stock cannot be negative")
     private Integer stock;
+    private Long categoryId;
 }

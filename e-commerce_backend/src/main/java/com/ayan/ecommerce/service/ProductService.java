@@ -3,9 +3,12 @@ package com.ayan.ecommerce.service;
 import com.ayan.ecommerce.dto.ProductCategoryDTO;
 import com.ayan.ecommerce.dto.ProductRequestDTO;
 import com.ayan.ecommerce.dto.ProductResponseDTO;
+import com.ayan.ecommerce.entity.Category;
 import com.ayan.ecommerce.entity.Product;
 import com.ayan.ecommerce.exception.ProductNotFoundException;
+import com.ayan.ecommerce.repository.CategoryRepository;
 import com.ayan.ecommerce.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -18,13 +21,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class ProductService {
 
     private final ProductRepository repository;
-
-    public ProductService(ProductRepository repository) {
-        this.repository = repository;
-    }
+    private final CategoryRepository categoryRepository;
 
     private ProductResponseDTO mapToResponse(Product product) {
 
@@ -60,7 +61,12 @@ public class ProductService {
     }
 
     public ProductResponseDTO saveProduct(ProductRequestDTO dto){
+        Category category =
+                categoryRepository.findById(dto.getCategoryId())
+                        .orElseThrow(()->
+                                new RuntimeException("category not found"));
         Product product = mapToEntity(dto);
+        product.setCategory(category);
         product.setCreatedAt(LocalDateTime.now());
         Product savedProduct = repository.save(product);
         return mapToResponse(savedProduct);
