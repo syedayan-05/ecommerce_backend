@@ -15,6 +15,7 @@ public class JwtService {
     public String generateToken(User user){
         return Jwts.builder()
                 .subject(user.getEmail())
+                .claim("role" ,user.getRole().name())
                 .issuedAt(new Date())
                 .expiration(new Date(
                         System.currentTimeMillis()
@@ -23,5 +24,27 @@ public class JwtService {
                 .signWith(SignatureAlgorithm.HS256,
                         SECRET)
                 .compact();
+    }
+
+    public String extractUsername(String token){
+
+        return Jwts.parser()
+                .setSigningKey(SECRET)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
+    }
+
+    public boolean validToken(
+            String token,
+            User user
+    ){
+        String username =
+                extractUsername(token);
+
+        return username.equals(
+                user.getEmail()
+        );
     }
 }

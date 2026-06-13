@@ -57,26 +57,6 @@ public class AuthService {
         return jwtService.generateToken(user);
     }
 
-    public String extractUsername(String token){
 
-        return Jwts.parser()
-                .setSigningKey(SECRET)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
-    }
-
-    public boolean validToken(
-            String token,
-            User user
-    ){
-        String username =
-                extractUsername(token);
-
-        return username.equals(
-                user.getEmail()
-        );
-    }
 
 }
