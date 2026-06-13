@@ -7,9 +7,12 @@ import com.ayan.ecommerce.entity.Role;
 import com.ayan.ecommerce.entity.User;
 import com.ayan.ecommerce.repository.UserRepository;
 import com.ayan.ecommerce.security.JwtService;
+import io.jsonwebtoken.Jwts;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import static com.ayan.ecommerce.security.JwtService.SECRET;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +55,28 @@ public class AuthService {
         }
 
         return jwtService.generateToken(user);
+    }
+
+    public String extractUsername(String token){
+
+        return Jwts.parser()
+                .setSigningKey(SECRET)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
+    }
+
+    public boolean validToken(
+            String token,
+            User user
+    ){
+        String username =
+                extractUsername(token);
+
+        return username.equals(
+                user.getEmail()
+        );
     }
 
 }
