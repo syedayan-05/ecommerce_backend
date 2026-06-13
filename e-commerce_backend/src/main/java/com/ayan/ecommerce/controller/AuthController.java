@@ -1,5 +1,6 @@
 package com.ayan.ecommerce.controller;
 
+import com.ayan.ecommerce.dto.LoginRequestDTO;
 import com.ayan.ecommerce.dto.RegisterRequestDTO;
 import com.ayan.ecommerce.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -19,5 +20,12 @@ public class AuthController {
             @RequestBody RegisterRequestDTO dto
             ){
         return service.register(dto);
+    }
+
+    @PostMapping("/login")
+    public String login(
+            @RequestBody LoginRequestDTO dto
+    ){
+        return service.Login(dto);
     }
 }

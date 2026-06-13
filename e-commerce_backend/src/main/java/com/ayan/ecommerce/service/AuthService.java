@@ -1,5 +1,7 @@
 package com.ayan.ecommerce.service;
 
+
+import com.ayan.ecommerce.dto.LoginRequestDTO;
 import com.ayan.ecommerce.dto.RegisterRequestDTO;
 import com.ayan.ecommerce.entity.Role;
 import com.ayan.ecommerce.entity.User;
@@ -34,6 +36,20 @@ public class AuthService {
         userRepository.save(user);
 
         return "user saved....";
+    }
+
+    public String Login(LoginRequestDTO dto){
+        User user = userRepository.findByEmail(dto.getEmail())
+                .orElseThrow(()->
+                        new RuntimeException(
+                                "Invalid Credentials"
+                        ));
+        if (!passwordEncoder.matches(dto.getPassword(),
+                user.getPassword())){
+            throw new RuntimeException("Invalid Credentials");
+        }
+
+        return "Login Success....";
     }
 
 }
