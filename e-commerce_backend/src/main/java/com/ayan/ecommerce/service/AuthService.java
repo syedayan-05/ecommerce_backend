@@ -6,6 +6,7 @@ import com.ayan.ecommerce.dto.RegisterRequestDTO;
 import com.ayan.ecommerce.entity.Role;
 import com.ayan.ecommerce.entity.User;
 import com.ayan.ecommerce.repository.UserRepository;
+import com.ayan.ecommerce.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public String register(RegisterRequestDTO dto){
         if (userRepository.findByEmail(dto.getEmail())
@@ -49,7 +51,7 @@ public class AuthService {
             throw new RuntimeException("Invalid Credentials");
         }
 
-        return "Login Success....";
+        return jwtService.generateToken(user);
     }
 
 }
