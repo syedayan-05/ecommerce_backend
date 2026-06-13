@@ -3,6 +3,8 @@ package com.ayan.ecommerce.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @Entity
 @Table(name = "categories")
 @Getter
@@ -16,5 +18,7 @@ public class Category {
     private Long id;
     private String name;
     private String description;
+    @OneToMany(mappedBy = "category")
+    private List<Product> products;
 
 }
