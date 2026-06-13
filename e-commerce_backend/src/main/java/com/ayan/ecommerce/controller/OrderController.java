@@ -4,10 +4,9 @@ import com.ayan.ecommerce.dto.OrderRequestDTO;
 import com.ayan.ecommerce.entity.OrderRequest;
 import com.ayan.ecommerce.service.OrderService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/orders")
@@ -22,5 +21,15 @@ public class OrderController {
         service.placeOrder(dto);
 
         return "Order placed successfully";
+    }
+
+    @GetMapping("/all")
+    public List<OrderRequest> getAllOrder(){
+        return service.getAllOrders();
+    }
+
+    @GetMapping("/{id}")
+    public OrderRequest getOrderById(Long id){
+        return service.getOrderById(id);
     }
 }

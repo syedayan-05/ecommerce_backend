@@ -42,4 +42,12 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.badRequest().body(errors);
     }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<String> handleNoStockException(
+            InsufficientStockException e
+    ){
+        return ResponseEntity.badRequest()
+                .body(e.getMessage());
+    }
 }
