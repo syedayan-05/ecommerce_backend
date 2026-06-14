@@ -1,5 +1,6 @@
 package com.ayan.ecommerce.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,5 +20,6 @@ public class Cart {
     private Long id;
 
     @OneToMany(mappedBy = "cart")
+    @JsonManagedReference
     private List<CartItem> cartItems;
 }
