@@ -1,36 +1,29 @@
 package com.ayan.ecommerce.entity;
 
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
-@Table(name = "users")
-@Getter
+@Table(name = "verification_tokens")
 @Setter
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
-
+public class VerificationToken {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;
-
-    @Column(unique = true)
-    private String email;
-
-    private String password;
-
-    @Enumerated(EnumType.STRING)
-    private Role role;
-
+    private String otp;
+    private LocalDateTime expiryTime;
     private boolean verified;
 
     @JsonIgnore
-    @OneToOne(mappedBy = "user")
-    private VerificationToken verificationToken;
+    @OneToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 }

@@ -4,10 +4,7 @@ import com.ayan.ecommerce.dto.LoginRequestDTO;
 import com.ayan.ecommerce.dto.RegisterRequestDTO;
 import com.ayan.ecommerce.service.AuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
@@ -27,5 +24,12 @@ public class AuthController {
             @RequestBody LoginRequestDTO dto
     ){
         return service.Login(dto);
+    }
+
+    @PostMapping("/verify")
+    public String verify(
+            @RequestParam String otp
+    ){
+        return service.verifyEmail(otp);
     }
 }

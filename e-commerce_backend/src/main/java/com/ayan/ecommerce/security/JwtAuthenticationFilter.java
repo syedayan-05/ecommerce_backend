@@ -26,12 +26,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserRepository repository;
 
+
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain)
             throws ServletException, IOException, java.io.IOException {
+        System.out.println("PATH = " + request.getServletPath());
         System.out.println("JWT FILTER HIT");
         final String authHeader =
                 request.getHeader("Authorization");

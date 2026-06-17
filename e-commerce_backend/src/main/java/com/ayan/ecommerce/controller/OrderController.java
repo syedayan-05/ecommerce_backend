@@ -29,7 +29,7 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    public OrderRequest getOrderById(Long id){
+    public OrderRequest getOrderById(@PathVariable Long id){
         return service.getOrderById(id);
     }
 }
