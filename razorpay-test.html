@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Razorpay Test Payment</title>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 80px auto;
+            padding: 30px;
+            text-align: center;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        #result {
+            margin-top: 30px;
+            text-align: left;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>Razorpay Test Payment</h1>
+
+<p>Order ID: <strong>4</strong></p>
+
+<button id="payButton">
+    Pay Now
+</button>
+
+<div id="result"></div>
+
+<script>
+
+    const razorpayKeyId = "rzp_test_TJpvoJBOfO62lo";
+
+    const razorpayOrderId =
+        "order_TNiVWbKjdv0lsk";
+
+    const orderId = 4;
+
+
+    document.getElementById("payButton").onclick = function () {
+
+        const options = {
+
+            key: razorpayKeyId,
+
+            order_id: razorpayOrderId,
+
+            currency: "INR",
+
+            name: "Shopease",
+
+            description: "Test Payment",
+
+            handler: async function (response) {
+
+                console.log("Razorpay Response:");
+                console.log(response);
+
+                document.getElementById("result").innerText =
+                    JSON.stringify(response, null, 2);
+
+
+                // Send payment details to backend
+                const verificationResponse = await fetch(
+                    "http://localhost:8080/api/payments/verify-razorpay",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+
+                            orderId: orderId,
+
+                            razorpayOrderId:
+                            response.razorpay_order_id,
+
+                            razorpayPaymentId:
+                            response.razorpay_payment_id,
+
+                            razorpaySignature:
+                            response.razorpay_signature
+
+                        })
+                    }
+                );
+
+
+                const verificationResult =
+                    await verificationResponse.json();
+
+
+                console.log(
+                    "Backend Verification:",
+                    verificationResult
+                );
+
+
+                document.getElementById("result").innerText +=
+                    "\n\nBackend Verification:\n" +
+                    JSON.stringify(
+                        verificationResult,
+                        null,
+                        2
+                    );
+
+            },
+
+            modal: {
+
+                ondismiss: function () {
+
+                    console.log(
+                        "Payment popup closed"
+                    );
+
+                }
+
+            }
+
+        };
+
+
+        const razorpay =
+            new Razorpay(options);
+
+
+        razorpay.on(
+            "payment.failed",
+            function (response) {
+
+                console.log(
+                    "Payment Failed:",
+                    response.error
+                );
+
+                document.getElementById("result").innerText =
+                    JSON.stringify(
+                        response.error,
+                        null,
+                        2
+                    );
+
+            }
+        );
+
+
+        razorpay.open();
+
+    };
+
+</script>
+
+</body>
+
+</html>
+```
