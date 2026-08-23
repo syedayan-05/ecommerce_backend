@@ -19,7 +19,15 @@ public class Cart {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToMany(mappedBy = "cart")
+    @OneToOne
+    @JoinColumn(name = "user_id",unique = true)
+    private User user;
+
+    @OneToMany(
+            mappedBy = "cart",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     @JsonManagedReference
     private List<CartItem> cartItems;
 }

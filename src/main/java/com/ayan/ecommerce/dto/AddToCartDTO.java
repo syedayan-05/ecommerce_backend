@@ -1,5 +1,7 @@
 package com.ayan.ecommerce.dto;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.*;
 
 @Getter
@@ -9,9 +11,11 @@ import lombok.*;
 @Builder
 public class AddToCartDTO {
 
-    private Long cartId;
-
+    @NotNull(message = "Product ID is required")
     private Long productId;
 
+    @NotNull(message = "Quantity is required")
+    @Positive(message = "Quantity must be greater than 0")
     private Integer quantity;
 }
+

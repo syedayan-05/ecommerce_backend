@@ -28,6 +28,7 @@ public class Product {
     @Column(nullable = false)
     private BigDecimal price;
 
+    @Column(nullable = false)
     private Integer stock;
 
     private LocalDateTime createdAt;
@@ -37,4 +38,6 @@ public class Product {
     @JsonIgnoreProperties("products")
     private Category category;
 
+    @Column(name = "image_url")
+    private String imageUrl;
 }
