@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "order_request")
@@ -18,4 +19,24 @@ public class OrderRequest {
     private Long id;
     private LocalDateTime orderDate;
     private Double amount;
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "address_id")
+    private Address shippingAddress;
+    @OneToMany(mappedBy = "orderRequest",
+            cascade = CascadeType.ALL)
+
+    private List<OrderItem> items;
+    private String orderNumber;
+
+
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus paymentStatus;
+
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod;
 }

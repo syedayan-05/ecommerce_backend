@@ -2,11 +2,9 @@ package com.ayan.ecommerce.security;
 
 import com.ayan.ecommerce.entity.User;
 import com.ayan.ecommerce.repository.UserRepository;
-import com.ayan.ecommerce.service.AuthService;
-import io.jsonwebtoken.io.IOException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,76 +14,148 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.IOException;
 import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+public class JwtAuthenticationFilter
+        extends OncePerRequestFilter {
 
 
     private final JwtService jwtService;
-    private final UserRepository repository;
 
+    private final UserRepository userRepository;
 
 
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
-            FilterChain filterChain)
-            throws ServletException, IOException, java.io.IOException {
-        System.out.println("PATH = " + request.getServletPath());
-        System.out.println("JWT FILTER HIT");
-        final String authHeader =
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+
+
+        String authHeader =
                 request.getHeader("Authorization");
 
-        if(authHeader == null ||
-                !authHeader.startsWith("Bearer ")) {
 
-            filterChain.doFilter(request,response);
+        // =====================================================
+        // NO TOKEN
+        // =====================================================
+
+        if (
+                authHeader == null ||
+                        !authHeader.startsWith("Bearer ")
+        ) {
+
+            filterChain.doFilter(
+                    request,
+                    response
+            );
+
             return;
         }
 
-        String jwt =
-                authHeader.substring(7);
 
-        String userEmail =
-                jwtService.extractUsername(jwt);
+        // =====================================================
+        // EXTRACT TOKEN
+        // =====================================================
 
-        User user = repository
-                .findByEmail(userEmail)
-                .orElseThrow();
+        String token =
+                authHeader.substring(7).trim();
 
-        System.out.println("User Role = " + user.getRole());
 
-        System.out.println(
-                "Token Validation = "
-                        + jwtService.validToken(jwt,user)
-        );
+        if (token.isEmpty()) {
 
-        System.out.println("Authenticated Role = " + user.getRole());
+            filterChain.doFilter(
+                    request,
+                    response
+            );
 
-        if(jwtService.validToken(jwt,user)){
-
-            SimpleGrantedAuthority authority =
-                    new SimpleGrantedAuthority(
-                            "ROLE_" + user.getRole().name()
-                    );
-
-            UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(
-                            user,
-                            null,
-                            List.of(authority)
-                    );
-
-            SecurityContextHolder
-                    .getContext()
-                    .setAuthentication(authToken);
+            return;
         }
 
-        filterChain.doFilter(request,response);
+
+        try {
+
+            // =================================================
+            // EXTRACT EMAIL
+            // =================================================
+
+            String email =
+                    jwtService.extractUsername(token);
+
+
+            // =================================================
+            // FIND USER
+            // =================================================
+
+            User user =
+                    userRepository
+                            .findByEmail(email)
+                            .orElse(null);
+
+
+            if (user == null) {
+
+                filterChain.doFilter(
+                        request,
+                        response
+                );
+
+                return;
+            }
+
+
+            // =================================================
+            // VALIDATE TOKEN
+            // =================================================
+
+            if (
+                    jwtService.validToken(
+                            token,
+                            user
+                    )
+            ) {
+
+                SimpleGrantedAuthority authority =
+                        new SimpleGrantedAuthority(
+                                "ROLE_" +
+                                        user.getRole().name()
+                        );
+
+
+                UsernamePasswordAuthenticationToken
+                        authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                user.getEmail(),
+                                null,
+                                List.of(authority)
+                        );
+
+
+                SecurityContextHolder
+                        .getContext()
+                        .setAuthentication(
+                                authentication
+                        );
+            }
+
+
+        } catch (
+                JwtException |
+                IllegalArgumentException e
+        ) {
+
+            SecurityContextHolder
+                    .clearContext();
+        }
+
+
+        filterChain.doFilter(
+                request,
+                response
+        );
     }
-
-
 }

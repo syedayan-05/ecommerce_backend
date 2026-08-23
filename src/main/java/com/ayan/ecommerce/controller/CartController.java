@@ -1,9 +1,12 @@
 package com.ayan.ecommerce.controller;
 
 import com.ayan.ecommerce.dto.AddToCartDTO;
+import com.ayan.ecommerce.dto.CartItemResponseDTO;
+import com.ayan.ecommerce.dto.CartResponseDTO;
 import com.ayan.ecommerce.entity.Cart;
 import com.ayan.ecommerce.entity.CartItem;
 import com.ayan.ecommerce.service.CartService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,45 +14,46 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/cart")
 @RequiredArgsConstructor
 public class CartController {
-    private final CartService service;
+   private final CartService service;
 
-    @PostMapping("/add")
-    public CartItem addCart(@RequestBody AddToCartDTO dto){
+   @PostMapping("/add")
+    public CartItemResponseDTO addCart(
+            @Valid @RequestBody AddToCartDTO dto
+   ){
         return service.addToCart(dto);
-    }
+   }
 
-    @GetMapping("/{cartId}")
-    public Cart getCart(@PathVariable Long cartId){
-        return service.getCard(cartId);
-    }
+   @GetMapping
+    public CartResponseDTO getMyCart(){
+        return service.getMyCart();
+   }
 
-    @DeleteMapping("/remove/{cartItemId}")
-    public String removeItem(@PathVariable Long cartItemId){
-
+   @DeleteMapping("/remove/{cartItemId}")
+    public String removeItem(
+            @PathVariable Long cartItemId
+   ){
         return service.removeItem(cartItemId);
-    }
+   }
 
-    @PutMapping("/update/{cartItemId}")
-    public CartItem updateQuantity(
+   @PutMapping("update/{cartItemId}")
+    public CartItemResponseDTO updateQuantity(
             @PathVariable Long cartItemId,
-            @RequestParam Integer quantity){
+            @RequestParam Integer quantity
+   ){
+       return service.updateQuantity(cartItemId, quantity);
+   }
 
-        return service.updateQuantity(
-                cartItemId,
-                quantity
-        );
+    @DeleteMapping("/clear")
+    public String clearCart()
+    {
+        return service.clearCart();
+    }
+    @GetMapping("/total")
+    public java.math.BigDecimal calculateTotal()
+    {
+        return service.calculateTotal();
     }
 
-    @DeleteMapping("/clear/{cartId}")
-    public String clearCart(@PathVariable
-                            Long cartId){
-        return service.clearCart(cartId);
-    }
 
-    @GetMapping("/total/{cartId}")
-    public Double calculateTotal(
-            @PathVariable Long cartId
-    ){
-        return service.calculateTotal(cartId);
-    }
+
 }

@@ -9,14 +9,13 @@ import com.ayan.ecommerce.exception.ProductNotFoundException;
 import com.ayan.ecommerce.repository.CategoryRepository;
 import com.ayan.ecommerce.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -27,11 +26,16 @@ public class ProductService {
     private final ProductRepository repository;
     private final CategoryRepository categoryRepository;
 
+
+    // =========================
+    // ENTITY -> RESPONSE DTO
+    // =========================
+
     private ProductResponseDTO mapToResponse(Product product) {
 
         ProductCategoryDTO categoryDTO = null;
 
-        if(product.getCategory() != null){
+        if (product.getCategory() != null) {
 
             categoryDTO = ProductCategoryDTO.builder()
                     .id(product.getCategory().getId())
@@ -46,74 +50,71 @@ public class ProductService {
                 .price(product.getPrice())
                 .stock(product.getStock())
                 .createdAt(product.getCreatedAt())
+                .imageUrl(product.getImageUrl())
                 .category(categoryDTO)
                 .build();
     }
 
-    private Product mapToEntity(ProductRequestDTO dto){
+
+    // =========================
+    // REQUEST DTO -> ENTITY
+    // =========================
+
+    private Product mapToEntity(ProductRequestDTO dto) {
+
         return Product.builder()
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .price(dto.getPrice())
                 .stock(dto.getStock())
+                .imageUrl(dto.getImageUrl())
                 .build();
-
     }
 
-    public ProductResponseDTO saveProduct(ProductRequestDTO dto){
-        Category category =
-                categoryRepository.findById(dto.getCategoryId())
-                        .orElseThrow(()->
-                                new RuntimeException("category not found"));
+
+    // =========================
+    // CREATE PRODUCT
+    // =========================
+
+    @Transactional
+    public ProductResponseDTO saveProduct(ProductRequestDTO dto) {
+
+        Category category = categoryRepository.findById(dto.getCategoryId())
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Category not found with id " + dto.getCategoryId()
+                        ));
+
         Product product = mapToEntity(dto);
+
         product.setCategory(category);
         product.setCreatedAt(LocalDateTime.now());
+
         Product savedProduct = repository.save(product);
+
         return mapToResponse(savedProduct);
     }
 
-    public List<ProductResponseDTO> getAllProducts(){
-        return repository.findAll().
-                stream()
-                .map(this::mapToResponse)
-                .toList();
-    }
 
-    public Product getProductById(Long id){
-        return repository.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException(
-                        "Product Not Found with id " + id));
-    }
-
-    public Product updateProduct(Long id,Product updateProduct){
-        Product existingProduct =  repository.findById(id)
-                .orElseThrow(()->
-                        new ProductNotFoundException(
-                                "Product Not Found with id " + id
-                        )
-                );
-        existingProduct.setName(updateProduct.getName());
-        existingProduct.setDescription(updateProduct.getDescription());
-        existingProduct.setPrice(updateProduct.getPrice());
-        existingProduct.setStock(updateProduct.getStock());
-
-        return repository.save(existingProduct);
-    }
-
-    public void deleteProduct(Long id){
-        Product product = repository.findById(id)
-                .orElseThrow(() ->
-                        new ProductNotFoundException(
-                           "Product not found with id " + id
-                        ));
-
-        repository.delete(product);
-    }
+    // =========================
+    // GET ALL PRODUCTS
+    // =========================
 
     public Page<ProductResponseDTO> getAllProduct(
             int page,
             int size,
-            String sortBy){
+            String sortBy) {
+
+        if (page < 0) {
+            throw new IllegalArgumentException("Page cannot be negative");
+        }
+
+        if (size < 1 || size > 100) {
+            throw new IllegalArgumentException(
+                    "Size must be between 1 and 100"
+            );
+        }
+
         Pageable pageable = PageRequest.of(
                 page,
                 size,
@@ -124,14 +125,109 @@ public class ProductService {
                 repository.findAll(pageable);
 
         return products.map(this::mapToResponse);
-
     }
 
-    public List<ProductResponseDTO> searchProduct(String keyword){
-            return repository.findByNameContainingIgnoreCase(keyword)
-                    .stream()
-                    .map(this::mapToResponse)
-                    .toList();
+
+    // =========================
+    // GET PRODUCT BY ID
+    // =========================
+
+    public ProductResponseDTO getProductById(Long id) {
+
+        Product product = repository.findById(id)
+                .orElseThrow(() ->
+                        new ProductNotFoundException(
+                                "Product Not Found with id " + id
+                        ));
+
+        return mapToResponse(product);
     }
 
+
+    // =========================
+    // GET PRODUCTS BY CATEGORY
+    // =========================
+
+    public List<ProductResponseDTO> getProductsByCategory(
+            Long categoryId) {
+
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new RuntimeException(
+                    "Category not found with id " + categoryId
+            );
+        }
+
+        return repository.findByCategoryId(categoryId)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+
+    // =========================
+    // UPDATE PRODUCT
+    // =========================
+
+    @Transactional
+    public ProductResponseDTO updateProduct(
+            Long id,
+            ProductRequestDTO dto) {
+
+        Product existingProduct = repository.findById(id)
+                .orElseThrow(() ->
+                        new ProductNotFoundException(
+                                "Product Not Found with id " + id
+                        ));
+
+        Category category = categoryRepository.findById(dto.getCategoryId())
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Category not found with id "
+                                        + dto.getCategoryId()
+                        ));
+
+        existingProduct.setName(dto.getName());
+        existingProduct.setDescription(dto.getDescription());
+        existingProduct.setPrice(dto.getPrice());
+        existingProduct.setStock(dto.getStock());
+        existingProduct.setImageUrl(dto.getImageUrl());
+        existingProduct.setCategory(category);
+
+        Product updatedProduct =
+                repository.save(existingProduct);
+
+        return mapToResponse(updatedProduct);
+    }
+
+
+    // =========================
+    // DELETE PRODUCT
+    // =========================
+
+    @Transactional
+    public void deleteProduct(Long id) {
+
+        Product product = repository.findById(id)
+                .orElseThrow(() ->
+                        new ProductNotFoundException(
+                                "Product not found with id " + id
+                        ));
+
+        repository.delete(product);
+    }
+
+
+    // =========================
+    // SEARCH PRODUCT
+    // =========================
+
+    public List<ProductResponseDTO> searchProduct(
+            String keyword) {
+
+        return repository
+                .findByNameContainingIgnoreCase(keyword)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
 }
