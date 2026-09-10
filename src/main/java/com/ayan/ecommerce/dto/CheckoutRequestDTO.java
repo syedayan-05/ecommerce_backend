@@ -9,7 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class CheckoutRequestDTO {
-    @NotNull
+
+    @NotNull(message = "Address Id is required")
     private Long addressId;
-    private String paymentMethod;
 }

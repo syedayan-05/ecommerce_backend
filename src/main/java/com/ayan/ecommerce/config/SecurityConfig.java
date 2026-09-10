@@ -20,9 +20,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+
     private final CustomAccessDeniedHandler accessDeniedHandler;
+
     private final GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler;
+
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -43,48 +47,35 @@ public class SecurityConfig {
 
                 // AUTHORIZATION
                 .authorizeHttpRequests(auth -> auth
-
-                        // ==============================
-                        // PUBLIC
-                        // ==============================
-
+                        // PUBLIC APIs
                         .requestMatchers(
                                 "/auth/**",
                                 "/test-email",
+
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
+
+                                // Google OAuth2
                                 "/oauth2/**",
-                                "/login/**"
+                                "/login/**",
+
+                                "/api/webhooks/razorpay"
                         ).permitAll()
 
-
-                        // ==============================
-                        // PUBLIC CATEGORY GET
-                        // ==============================
-
+                        // PUBLIC CATEGORY And Product API's Soo Anyone can view categories
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/categories",
                                 "/categories/**"
                         ).permitAll()
-
-
-                        // ==============================
-                        // PUBLIC PRODUCT GET
-                        // ==============================
-
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/products",
                                 "/products/**"
                         ).permitAll()
 
-
-                        // ==============================
-                        // ADMIN PRODUCT
-                        // ==============================
-
+                        // ADMIN PRODUCT API's
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/products",
@@ -103,11 +94,7 @@ public class SecurityConfig {
                                 "/products/**"
                         ).hasRole("ADMIN")
 
-
-                        // ==============================
-                        // ADMIN CATEGORY
-                        // ==============================
-
+                        // ADMIN CATEGORY API's
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/categories",
@@ -127,64 +114,118 @@ public class SecurityConfig {
                         ).hasRole("ADMIN")
 
 
-                        // ==============================
+                        // =============================================
+                        // CART
+                        // USER + ADMIN ONLY
+                        // =============================================
+
+                        .requestMatchers(
+                                "/cart/**"
+                        ).hasAnyRole("USER", "ADMIN")
+
+                                // ==============================
+// ORDERS
+// ==============================
+
+// Checkout + user's orders
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/orders/checkout"
+                                ).hasRole("USER")
+
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/orders/my-orders"
+                                ).hasRole("USER")
+
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/orders/**"
+                                ).hasAnyRole("USER", "ADMIN")
+
+                                .requestMatchers(
+                                        HttpMethod.PUT,
+                                        "/orders/**"
+                                ).hasRole("USER")
+
+
+                        // =============================================
                         // PAYMENTS
-                        // ==============================
+                        // USER + ADMIN ONLY
+                        // =============================================
 
                         .requestMatchers(
                                 "/api/payments/**"
                         ).hasAnyRole("USER", "ADMIN")
 
 
-                        // ==============================
+                        // =============================================
                         // USERS
-                        // ==============================
+                        // USER + ADMIN ONLY
+                        // =============================================
 
                         .requestMatchers(
                                 "/users/**"
                         ).hasAnyRole("USER", "ADMIN")
 
 
-                        // ==============================
+                        // =============================================
                         // ADDRESSES
-                        // ==============================
+                        // USER + ADMIN ONLY
+                        // =============================================
 
                         .requestMatchers(
                                 "/addresses/**"
                         ).hasAnyRole("USER", "ADMIN")
 
 
-                        // ==============================
+                        // =============================================
                         // EVERYTHING ELSE
-                        // ==============================
+                        // Authentication required
+                        // =============================================
 
                         .anyRequest().authenticated()
                 )
 
+
+                // =============================================
                 // GOOGLE OAUTH2
+                // =============================================
+
                 .oauth2Login(oauth ->
                         oauth.successHandler(
                                 googleOAuth2SuccessHandler
                         )
                 )
 
+
+                // =============================================
                 // EXCEPTION HANDLING
+                // =============================================
+
                 .exceptionHandling(exception -> exception
 
+                        // 401 - Not authenticated
                         .authenticationEntryPoint(
                                 authenticationEntryPoint
                         )
 
+                        // 403 - Authenticated but forbidden
                         .accessDeniedHandler(
                                 accessDeniedHandler
                         )
                 )
 
+
+                // =============================================
                 // JWT FILTER
+                // =============================================
+
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
                 );
+
 
         return http.build();
     }

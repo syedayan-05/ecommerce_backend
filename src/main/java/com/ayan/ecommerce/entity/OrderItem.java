@@ -11,18 +11,24 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 public class OrderItem {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private Integer quantity;
+
     private Double price;
+
     @ManyToOne
     @JoinColumn(name = "order_id")
     private OrderRequest orderRequest;
+
     @ManyToOne
     @JoinColumn(name = "product_id")
     private Product product;
-    private String productName;
-    private String productImage;
 
+    private String productName;
+
+    private String productImage;
 }

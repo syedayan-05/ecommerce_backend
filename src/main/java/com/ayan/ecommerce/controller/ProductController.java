@@ -1,5 +1,6 @@
 package com.ayan.ecommerce.controller;
 
+import com.ayan.ecommerce.dto.ProductFilterDTO;
 import com.ayan.ecommerce.dto.ProductRequestDTO;
 import com.ayan.ecommerce.dto.ProductResponseDTO;
 import com.ayan.ecommerce.service.ProductService;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -57,6 +59,44 @@ public class ProductController {
             @RequestParam(defaultValue = "id") String sortBy) {
 
         return service.getAllProduct(page, size, sortBy);
+    }
+
+    @GetMapping("/filter")
+    public Page<ProductResponseDTO> filterProducts(
+
+            @RequestParam(required = false) String keyword,
+
+            @RequestParam(required = false) Long categoryId,
+
+            @RequestParam(required = false) BigDecimal minPrice,
+
+            @RequestParam(required = false) BigDecimal maxPrice,
+
+            @RequestParam(required = false) Integer minStock,
+
+            @RequestParam(required = false) Integer maxStock,
+
+            @RequestParam(defaultValue = "0") int page,
+
+            @RequestParam(defaultValue = "5") int size,
+
+            @RequestParam(defaultValue = "id") String sortBy) {
+
+        ProductFilterDTO filter = ProductFilterDTO.builder()
+                .keyword(keyword)
+                .categoryId(categoryId)
+                .minPrice(minPrice)
+                .maxPrice(maxPrice)
+                .minStock(minStock)
+                .maxStock(maxStock)
+                .build();
+
+        return service.filterProducts(
+                filter,
+                page,
+                size,
+                sortBy
+        );
     }
 
     @GetMapping("/{id}")
