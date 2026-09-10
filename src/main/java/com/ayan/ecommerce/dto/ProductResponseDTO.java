@@ -4,6 +4,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -18,7 +19,7 @@ public class ProductResponseDTO {
     private BigDecimal price;
     private Integer stock;
     private LocalDateTime createdAt;
-    private String imageUrl;
+    private List<ProductImageDTO> images;
 
     private ProductCategoryDTO category;
 }

@@ -14,13 +14,10 @@ import java.util.Optional;
 public interface OrderRequestRepository
         extends JpaRepository<OrderRequest, Long> {
 
-
     List<OrderRequest> findByUser(User user);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<OrderRequest> findByRazorpayOrderId(
             String razorpayOrderId
     );
-
-
 }

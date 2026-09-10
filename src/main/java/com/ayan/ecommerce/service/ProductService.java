@@ -1,6 +1,7 @@
 package com.ayan.ecommerce.service;
 
 import com.ayan.ecommerce.dto.ProductFilterDTO;
+import com.ayan.ecommerce.dto.ProductImageDTO;
 import com.ayan.ecommerce.specification.ProductSpecification;
 import com.ayan.ecommerce.dto.ProductCategoryDTO;
 import com.ayan.ecommerce.dto.ProductRequestDTO;
@@ -52,8 +53,19 @@ public class ProductService {
                 .price(product.getPrice())
                 .stock(product.getStock())
                 .createdAt(product.getCreatedAt())
-                .imageUrl(product.getImageUrl())
                 .category(categoryDTO)
+                .images(
+                        product.getImages()
+                                .stream()
+                                .map(image -> ProductImageDTO.builder()
+                                        .id(image.getId())
+                                        .imageUrl(image.getImageUrl())
+                                        .primary(image.isPrimary())
+                                        .sortOrder(image.getSortOrder())
+                                        .build()
+                                )
+                                .toList()
+                )
                 .build();
     }
 

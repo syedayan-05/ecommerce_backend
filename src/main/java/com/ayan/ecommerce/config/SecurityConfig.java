@@ -35,19 +35,35 @@ public class SecurityConfig {
 
         http
 
+                // =============================================
                 // CSRF
+                // =============================================
+
                 .csrf(csrf -> csrf.disable())
 
+
+                // =============================================
                 // SESSION
+                // JWT Based Authentication
+                // =============================================
+
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
                         )
                 )
 
+
+                // =============================================
                 // AUTHORIZATION
+                // =============================================
+
                 .authorizeHttpRequests(auth -> auth
+
+                        // =============================================
                         // PUBLIC APIs
+                        // =============================================
+
                         .requestMatchers(
                                 "/auth/**",
                                 "/test-email",
@@ -60,22 +76,39 @@ public class SecurityConfig {
                                 "/oauth2/**",
                                 "/login/**",
 
+                                // Razorpay Webhook
                                 "/api/webhooks/razorpay"
                         ).permitAll()
 
-                        // PUBLIC CATEGORY And Product API's Soo Anyone can view categories
+
+                        // =============================================
+                        // PUBLIC CATEGORY APIs
+                        // Anyone can view categories
+                        // =============================================
+
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/categories",
                                 "/categories/**"
                         ).permitAll()
+
+
+                        // =============================================
+                        // PUBLIC PRODUCT APIs
+                        // Anyone can view products
+                        // =============================================
+
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/products",
                                 "/products/**"
                         ).permitAll()
 
-                        // ADMIN PRODUCT API's
+
+                        // =============================================
+                        // ADMIN PRODUCT APIs
+                        // =============================================
+
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/products",
@@ -94,7 +127,11 @@ public class SecurityConfig {
                                 "/products/**"
                         ).hasRole("ADMIN")
 
-                        // ADMIN CATEGORY API's
+
+                        // =============================================
+                        // ADMIN CATEGORY APIs
+                        // =============================================
+
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/categories",
@@ -116,42 +153,68 @@ public class SecurityConfig {
 
                         // =============================================
                         // CART
-                        // USER + ADMIN ONLY
+                        // USER + ADMIN
                         // =============================================
 
                         .requestMatchers(
                                 "/cart/**"
                         ).hasAnyRole("USER", "ADMIN")
 
-                                // ==============================
-// ORDERS
-// ==============================
 
-// Checkout + user's orders
-                                .requestMatchers(
-                                        HttpMethod.POST,
-                                        "/orders/checkout"
-                                ).hasRole("USER")
+                        // =============================================
+                        // ORDERS
+                        // =============================================
 
-                                .requestMatchers(
-                                        HttpMethod.GET,
-                                        "/orders/my-orders"
-                                ).hasRole("USER")
+                        // ---------------------------------------------
+                        // ADMIN ORDER APIs
+                        // IMPORTANT:
+                        // Keep these BEFORE generic /orders/**
+                        // ---------------------------------------------
 
-                                .requestMatchers(
-                                        HttpMethod.GET,
-                                        "/orders/**"
-                                ).hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/orders/admin/**"
+                        ).hasRole("ADMIN")
 
-                                .requestMatchers(
-                                        HttpMethod.PUT,
-                                        "/orders/**"
-                                ).hasRole("USER")
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/orders/admin/**"
+                        ).hasRole("ADMIN")
+
+
+                        // ---------------------------------------------
+                        // CUSTOMER ORDER APIs
+                        // ---------------------------------------------
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/orders/checkout"
+                        ).hasRole("USER")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/orders/my-orders"
+                        ).hasRole("USER")
+
+
+                        // Customer + Admin can access order details
+                        // Ownership is checked in service layer
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/orders/**"
+                        ).hasAnyRole("USER", "ADMIN")
+
+
+                        // Customer order cancellation
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/orders/**"
+                        ).hasRole("USER")
 
 
                         // =============================================
                         // PAYMENTS
-                        // USER + ADMIN ONLY
+                        // USER + ADMIN
                         // =============================================
 
                         .requestMatchers(
@@ -161,7 +224,7 @@ public class SecurityConfig {
 
                         // =============================================
                         // USERS
-                        // USER + ADMIN ONLY
+                        // USER + ADMIN
                         // =============================================
 
                         .requestMatchers(
@@ -171,7 +234,7 @@ public class SecurityConfig {
 
                         // =============================================
                         // ADDRESSES
-                        // USER + ADMIN ONLY
+                        // USER + ADMIN
                         // =============================================
 
                         .requestMatchers(
@@ -181,7 +244,6 @@ public class SecurityConfig {
 
                         // =============================================
                         // EVERYTHING ELSE
-                        // Authentication required
                         // =============================================
 
                         .anyRequest().authenticated()
@@ -230,4 +292,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-
