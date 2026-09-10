@@ -53,7 +53,10 @@ public class User {
     private LocalDateTime updatedAt;
 
     @JsonIgnore
-    @OneToOne(mappedBy = "user")
+    @OneToOne(
+            mappedBy = "user",
+            fetch = FetchType.LAZY
+    )
     private VerificationToken verificationToken;
 
     @PrePersist

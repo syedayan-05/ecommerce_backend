@@ -6,6 +6,8 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
@@ -40,4 +42,13 @@ public class Product {
 
     @Column(name = "image_url")
     private String imageUrl;
+
+    @OneToMany(
+            mappedBy = "product",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @OrderBy("sortOrder ASC")
+    @JsonIgnoreProperties("product")
+    private List<ProductImage> images = new ArrayList<>();
 }

@@ -11,12 +11,15 @@ import java.util.Optional;
 public interface PaymentRepository
         extends JpaRepository<Payment, Long> {
 
-
-    Optional<Payment> findByOrder(OrderRequest order);
+    Optional<Payment> findByOrder(
+            OrderRequest order
+    );
 
     Optional<Payment> findByTransactionId(
             String transactionId
     );
 
-    Optional<Payment> findByOrderId(OrderRequest order);
+    Optional<Payment> findByRazorpayOrderId(
+            String razorpayOrderId
+    );
 }

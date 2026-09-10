@@ -1,5 +1,7 @@
 package com.ayan.ecommerce.service;
 
+import com.ayan.ecommerce.dto.ProductFilterDTO;
+import com.ayan.ecommerce.specification.ProductSpecification;
 import com.ayan.ecommerce.dto.ProductCategoryDTO;
 import com.ayan.ecommerce.dto.ProductRequestDTO;
 import com.ayan.ecommerce.dto.ProductResponseDTO;
@@ -229,5 +231,67 @@ public class ProductService {
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+    // =========================
+// ADVANCED PRODUCT FILTER
+// =========================
+
+    public Page<ProductResponseDTO> filterProducts(
+            ProductFilterDTO filter,
+            int page,
+            int size,
+            String sortBy) {
+
+        if (page < 0) {
+            throw new IllegalArgumentException(
+                    "Page cannot be negative"
+            );
+        }
+
+        if (size < 1 || size > 100) {
+            throw new IllegalArgumentException(
+                    "Size must be between 1 and 100"
+            );
+        }
+
+        if (filter.getMinPrice() != null
+                && filter.getMaxPrice() != null
+                && filter.getMinPrice().compareTo(filter.getMaxPrice()) > 0) {
+
+            throw new IllegalArgumentException(
+                    "Minimum price cannot be greater than maximum price"
+            );
+        }
+
+        if (filter.getMinStock() != null
+                && filter.getMaxStock() != null
+                && filter.getMinStock() > filter.getMaxStock()) {
+
+            throw new IllegalArgumentException(
+                    "Minimum stock cannot be greater than maximum stock"
+            );
+        }
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(sortBy)
+        );
+
+        var specification =
+                ProductSpecification.filterProducts(
+                        filter.getKeyword(),
+                        filter.getCategoryId(),
+                        filter.getMinPrice(),
+                        filter.getMaxPrice(),
+                        filter.getMinStock(),
+                        filter.getMaxStock()
+                );
+
+        Page<Product> products =
+                repository.findAll(specification, pageable);
+
+        return products.map(this::mapToResponse);
     }
 }

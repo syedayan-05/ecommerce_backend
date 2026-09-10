@@ -201,9 +201,11 @@ public class GlobalExceptionHandler {
             Exception ex
     ) {
 
+        ex.printStackTrace();
+
         ErrorResponse response = new ErrorResponse(
                 false,
-                "Something went wrong",
+                ex.getMessage(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 LocalDateTime.now(),
                 null,
@@ -214,6 +216,27 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(response);
     }
+
+
+
+//    @ExceptionHandler(Exception.class)
+//    public ResponseEntity<ErrorResponse> handleGenericException(
+//            Exception ex
+//    ) {
+//
+//        ErrorResponse response = new ErrorResponse(
+//                false,
+//                "Something went wrong",
+//                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+//                LocalDateTime.now(),
+//                null,
+//                null
+//        );
+//
+//        return ResponseEntity
+//                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                .body(response);
+//    }
 
     @ExceptionHandler(AddressNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleAddressNotFound(

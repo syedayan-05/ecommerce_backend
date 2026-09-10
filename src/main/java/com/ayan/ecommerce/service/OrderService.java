@@ -5,7 +5,11 @@ import com.ayan.ecommerce.dto.OrderDetailsResponseDTO;
 import com.ayan.ecommerce.dto.OrderItemResponseDTO;
 import com.ayan.ecommerce.dto.OrderResponseDTO;
 import com.ayan.ecommerce.entity.*;
-import com.ayan.ecommerce.repository.*;
+import com.ayan.ecommerce.repository.AddressRepository;
+import com.ayan.ecommerce.repository.CartRepository;
+import com.ayan.ecommerce.repository.OrderItemRepository;
+import com.ayan.ecommerce.repository.OrderRequestRepository;
+import com.ayan.ecommerce.repository.ProductRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,61 +20,71 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class OrderService {
+
     private final ProductRepository productRepository;
     private final OrderRequestRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-
     private final CartRepository cartRepository;
     private final AddressRepository addressRepository;
-    private final UserRepository userRepository;
-
     private final UserService userService;
 
-//    User user = userService.getLoggedInUser();
-
-//    public User getLoggedInUser(){
-//        return (User) SecurityContextHolder
-//                .getContext()
-//                .getAuthentication()
-//                .getPrincipal();
-//    }
-
-
+    // CHECKOUT
     @Transactional
     public OrderResponseDTO checkout(CheckoutRequestDTO dto) {
-
-        // 1. Logged-in User
         User user = userService.getLoggedInUser();
-
-        // 2. User Cart
         Cart cart = cartRepository.findByUser(user)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("Cart not found")
+                );
+        if (cart.getCartItems() == null ||
+                cart.getCartItems().isEmpty()) {
 
-        if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
-            throw new RuntimeException("Your cart is empty");
+            throw new RuntimeException(
+                    "Your cart is empty"
+            );
         }
-
-        // 3. Address Validation
         Address address = addressRepository.findByIdAndUser(
                 dto.getAddressId(),
                 user
         ).orElseThrow(() ->
-                new RuntimeException("Address not found"));
+                new RuntimeException("Address not found")
+        );
 
-        // 4. Payment Method
-        PaymentMethod paymentMethod =
-                PaymentMethod.valueOf(dto.getPaymentMethod().toUpperCase());
-
-        // 5. Calculate Total + Stock Check
+//        Calculate total + validate stock
         double totalAmount = 0.0;
 
         for (CartItem item : cart.getCartItems()) {
 
+            if (item.getQuantity() == null ||
+                    item.getQuantity() <= 0) {
+
+                throw new RuntimeException(
+                        "Invalid cart quantity"
+                );
+            }
+
             Product product = item.getProduct();
 
-            if (product.getStock() < item.getQuantity()) {
+            if (product == null) {
                 throw new RuntimeException(
-                        product.getName() + " is out of stock"
+                        "Product not found in cart"
+                );
+            }
+
+            if (product.getPrice() == null ||
+                    product.getPrice().doubleValue() <= 0) {
+
+                throw new RuntimeException(
+                        "Invalid product price"
+                );
+            }
+
+            if (product.getStock() == null ||
+                    product.getStock() < item.getQuantity()) {
+
+                throw new RuntimeException(
+                        product.getName() +
+                                " is out of stock"
                 );
             }
 
@@ -79,7 +93,16 @@ public class OrderService {
                             * item.getQuantity();
         }
 
-        // 6. Create Order
+        // 6. Create PENDING order
+        //
+        // Payment is NOT completed yet.
+        // Therefore:
+        // - Order = PENDING
+        // - Payment = PENDING
+        // - PaymentMethod = null
+        // - Stock is NOT reduced
+        // - Cart is NOT cleared
+
         OrderRequest order = OrderRequest.builder()
                 .user(user)
                 .shippingAddress(address)
@@ -87,14 +110,17 @@ public class OrderService {
                 .amount(totalAmount)
                 .status(OrderStatus.PENDING)
                 .paymentStatus(PaymentStatus.PENDING)
-                .paymentMethod(paymentMethod)
-                .orderNumber("ORD-" + System.currentTimeMillis())
-
+                .paymentMethod(null)
+                .orderNumber(
+                        "ORD-" +
+                                System.currentTimeMillis()
+                )
                 .build();
 
-        OrderRequest savedOrder = orderRepository.save(order);
+        OrderRequest savedOrder =
+                orderRepository.save(order);
 
-        // 7. Convert CartItems → OrderItems
+        // 7. Create order items
         for (CartItem item : cart.getCartItems()) {
 
             Product product = item.getProduct();
@@ -109,29 +135,150 @@ public class OrderService {
                     .build();
 
             orderItemRepository.save(orderItem);
-
-            // Reduce Stock
-            product.setStock(product.getStock() - item.getQuantity());
-            productRepository.save(product);
         }
 
-        // 8. Empty Cart
-        cart.getCartItems().clear();
-        cartRepository.save(cart);
+        // IMPORTANT:
+        //
+        // We DO NOT reduce stock here.
+        // We DO NOT clear cart here.
+        //
+        // These operations happen only after
+        // successful Razorpay payment verification.
 
-        // 9. Response
         return OrderResponseDTO.builder()
                 .orderId(savedOrder.getId())
                 .orderNumber(savedOrder.getOrderNumber())
                 .amount(savedOrder.getAmount())
                 .status(savedOrder.getStatus().name())
-                .paymentStatus(savedOrder.getPaymentStatus().name())
-                .paymentMethod(savedOrder.getPaymentMethod().name())
+                .paymentStatus(
+                        savedOrder.getPaymentStatus().name()
+                )
+                .paymentMethod(null)
+                .orderDate(savedOrder.getOrderDate())
                 .build();
     }
 
-    public List<OrderResponseDTO> getMyOrders() {
 
+    // =========================================================
+    // PAYMENT SUCCESS → CONFIRM ORDER
+    // =========================================================
+
+    @Transactional
+    public void confirmPaidOrder(
+            OrderRequest order,
+            PaymentMethod paymentMethod
+    ) {
+
+        // 1. Order must be pending
+        if (order.getStatus() != OrderStatus.PENDING) {
+
+            throw new RuntimeException(
+                    "Order is not pending"
+            );
+        }
+
+        // 2. Payment must be pending
+        if (order.getPaymentStatus() != PaymentStatus.PENDING) {
+
+            throw new RuntimeException(
+                    "Payment is not pending"
+            );
+        }
+
+        // 3. Validate payment method
+        if (paymentMethod == null) {
+
+            throw new RuntimeException(
+                    "Payment method is required"
+            );
+        }
+
+        // 4. Validate order items
+        if (order.getItems() == null ||
+                order.getItems().isEmpty()) {
+
+            throw new RuntimeException(
+                    "Order has no items"
+            );
+        }
+
+        // 5. Check stock again
+        //
+        // Customer may have spent time on
+        // Razorpay checkout.
+        //
+        // During that time stock could have changed.
+
+        for (OrderItem item : order.getItems()) {
+
+            Product product = item.getProduct();
+
+            if (product == null) {
+                throw new RuntimeException(
+                        "Product not found for order item"
+                );
+            }
+
+            if (product.getStock() == null ||
+                    product.getStock() < item.getQuantity()) {
+
+                throw new RuntimeException(
+                        product.getName() +
+                                " is no longer available"
+                );
+            }
+        }
+
+        // 6. Reduce stock
+        for (OrderItem item : order.getItems()) {
+
+            Product product = item.getProduct();
+
+            product.setStock(
+                    product.getStock()
+                            - item.getQuantity()
+            );
+
+            productRepository.save(product);
+        }
+
+        // 7. Payment completed
+        order.setPaymentStatus(
+                PaymentStatus.COMPLETED
+        );
+
+        // 8. Save actual payment method
+        order.setPaymentMethod(
+                paymentMethod
+        );
+
+        // 9. Confirm order
+        order.setStatus(
+                OrderStatus.CONFIRMED
+        );
+
+        orderRepository.save(order);
+
+        // 10. Clear user's cart
+        Cart cart = cartRepository.findByUser(
+                order.getUser()
+        ).orElse(null);
+
+        if (cart != null &&
+                cart.getCartItems() != null) {
+
+            cart.getCartItems().clear();
+
+            cartRepository.save(cart);
+        }
+    }
+
+
+    // =========================================================
+    // GET MY ORDERS
+    // =========================================================
+
+    public List<OrderResponseDTO> getMyOrders() {
 
         User user = userService.getLoggedInUser();
 
@@ -139,56 +286,112 @@ public class OrderService {
                 orderRepository.findByUser(user);
 
         return orders.stream()
-                .map(order -> OrderResponseDTO.builder()
-                        .orderId(order.getId())
-                        .orderNumber(order.getOrderNumber())
-                        .amount(order.getAmount())
-                        .status(order.getStatus().name())
-                        .paymentStatus(
-                                order.getPaymentStatus() != null
-                                        ? order.getPaymentStatus().name()
-                                        : null
-                        )
-                        .paymentMethod(
-                                order.getPaymentMethod() != null
-                                        ? order.getPaymentMethod().name()
-                                        : null
-                        )
-                        .orderDate(order.getOrderDate())
-                        .build())
+                .map(order ->
+                        OrderResponseDTO.builder()
+                                .orderId(order.getId())
+                                .orderNumber(
+                                        order.getOrderNumber()
+                                )
+                                .amount(
+                                        order.getAmount()
+                                )
+                                .status(
+                                        order.getStatus() != null
+                                                ? order.getStatus().name()
+                                                : null
+                                )
+                                .paymentStatus(
+                                        order.getPaymentStatus() != null
+                                                ? order.getPaymentStatus().name()
+                                                : null
+                                )
+                                .paymentMethod(
+                                        order.getPaymentMethod() != null
+                                                ? order.getPaymentMethod().name()
+                                                : null
+                                )
+                                .orderDate(
+                                        order.getOrderDate()
+                                )
+                                .build()
+                )
                 .toList();
-
-
     }
 
-    public OrderDetailsResponseDTO getOrderDetails(Long orderId){
+
+    // =========================================================
+    // GET ORDER DETAILS
+    // =========================================================
+
+    public OrderDetailsResponseDTO getOrderDetails(
+            Long orderId
+    ) {
+
         User user = userService.getLoggedInUser();
-        OrderRequest orderRequest = orderRepository.findById(orderId)
-                .orElseThrow(()->
-                        new RuntimeException("Order not found"));
-        if (!orderRequest.getUser().getId().equals(user.getId())) {
+
+        OrderRequest orderRequest =
+                orderRepository.findById(orderId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Order not found"
+                                )
+                        );
+
+        // Security check
+        if (!orderRequest.getUser()
+                .getId()
+                .equals(user.getId())) {
+
             throw new RuntimeException(
                     "You are not allowed to view this order"
             );
-
         }
+
+        if (orderRequest.getItems() == null) {
+
+            throw new RuntimeException(
+                    "Order items not found"
+            );
+        }
+
         List<OrderItemResponseDTO> items =
                 orderRequest.getItems()
                         .stream()
-                        .map(item -> OrderItemResponseDTO.builder()
-                                .productId(item.getProduct().getId())
-                                .productName(item.getProductName())
-                                .productImage(item.getProductImage())
-                                .quantity(item.getQuantity())
-                                .price(item.getPrice())
-                                .build())
+                        .map(item ->
+                                OrderItemResponseDTO.builder()
+                                        .productId(
+                                                item.getProduct()
+                                                        .getId()
+                                        )
+                                        .productName(
+                                                item.getProductName()
+                                        )
+                                        .productImage(
+                                                item.getProductImage()
+                                        )
+                                        .quantity(
+                                                item.getQuantity()
+                                        )
+                                        .price(
+                                                item.getPrice()
+                                        )
+                                        .build()
+                        )
                         .toList();
 
         return OrderDetailsResponseDTO.builder()
-                .orderId(orderRequest.getId())
-                .orderNumber(orderRequest.getOrderNumber())
-                .orderDate(orderRequest.getOrderDate())
-                .amount(orderRequest.getAmount())
+                .orderId(
+                        orderRequest.getId()
+                )
+                .orderNumber(
+                        orderRequest.getOrderNumber()
+                )
+                .orderDate(
+                        orderRequest.getOrderDate()
+                )
+                .amount(
+                        orderRequest.getAmount()
+                )
                 .status(
                         orderRequest.getStatus() != null
                                 ? orderRequest.getStatus().name()
@@ -206,59 +409,102 @@ public class OrderService {
                 )
                 .addressId(
                         orderRequest.getShippingAddress() != null
-                                ? orderRequest.getShippingAddress().getId()
+                                ? orderRequest
+                                  .getShippingAddress()
+                                  .getId()
                                 : null
                 )
                 .items(items)
-                .build();    
+                .build();
     }
+
+
+    // =========================================================
+    // CANCEL ORDER
+    // =========================================================
 
     @Transactional
     public String cancelOrder(Long orderId) {
 
-        // 1. Logged-in user
         User user = userService.getLoggedInUser();
 
-        // 2. Order find karo
-        OrderRequest order = orderRepository.findById(orderId)
-                .orElseThrow(() ->
-                        new RuntimeException("Order not found"));
+        OrderRequest order =
+                orderRepository.findById(orderId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Order not found"
+                                )
+                        );
 
-        // 3. Security check
-        if (!order.getUser().getId().equals(user.getId())) {
+        // Security check
+        if (!order.getUser()
+                .getId()
+                .equals(user.getId())) {
+
             throw new RuntimeException(
                     "You are not allowed to cancel this order"
             );
         }
 
-        // 4. Order status check
-        if (order.getStatus() == OrderStatus.SHIPPED ||
-                order.getStatus() == OrderStatus.DELIVERED ||
-                order.getStatus() == OrderStatus.CANCELLED) {
+        // Already cancelled
+        if (order.getStatus() ==
+                OrderStatus.CANCELLED) {
 
             throw new RuntimeException(
-                    "Order cannot be cancelled"
+                    "Order is already cancelled"
             );
         }
 
-        // 5. Stock restore
-        for (OrderItem item : order.getItems()) {
+        // Shipped / out for delivery / delivered
+        // cannot be cancelled
+        if (order.getStatus() ==
+                OrderStatus.SHIPPED ||
+                order.getStatus() ==
+                        OrderStatus.OUT_FOR_DELIVERY ||
+                order.getStatus() ==
+                        OrderStatus.DELIVERED) {
 
-            Product product = item.getProduct();
-
-            product.setStock(
-                    product.getStock() + item.getQuantity()
+            throw new RuntimeException(
+                    "Order cannot be cancelled at this stage"
             );
-
-            productRepository.save(product);
         }
 
-        // 6. Cancel order
-        order.setStatus(OrderStatus.CANCELLED);
+        /*
+         * If payment was completed:
+         *      restore stock.
+         *
+         * If payment is still pending:
+         *      stock was never reduced.
+         */
+
+        if (order.getPaymentStatus() ==
+                PaymentStatus.COMPLETED) {
+
+            if (order.getItems() != null) {
+
+                for (OrderItem item :
+                        order.getItems()) {
+
+                    Product product =
+                            item.getProduct();
+
+                    product.setStock(
+                            product.getStock()
+                                    + item.getQuantity()
+                    );
+
+                    productRepository.save(product);
+                }
+            }
+        }
+
+        // Cancel order
+        order.setStatus(
+                OrderStatus.CANCELLED
+        );
 
         orderRepository.save(order);
 
         return "Order cancelled successfully";
     }
-
 }

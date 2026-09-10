@@ -176,7 +176,7 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/test-email")
+    @PostMapping("/test-email")
     public String testEmail(
             @RequestParam String email
     ) {

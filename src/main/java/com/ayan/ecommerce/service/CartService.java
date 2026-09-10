@@ -122,6 +122,7 @@ public class CartService {
     // GET MY CART
     // =============================================
 
+    @Transactional
     public CartResponseDTO getMyCart() {
 
         User user = userService.getLoggedInUser();
@@ -133,8 +134,6 @@ public class CartService {
 
         return mapToCartResponse(cart);
     }
-
-
     // =============================================
     // REMOVE ITEM
     // =============================================
@@ -264,6 +263,7 @@ public class CartService {
     // CALCULATE TOTAL
     // =============================================
 
+    @Transactional
     public BigDecimal calculateTotal() {
 
         User user = userService.getLoggedInUser();
