@@ -2,6 +2,7 @@ package com.ayan.ecommerce.dto;
 
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -16,7 +17,7 @@ public class OrderResponseDTO {
 
     private String orderNumber;
 
-    private Double amount;
+    private BigDecimal amount;
 
     private String status;
 

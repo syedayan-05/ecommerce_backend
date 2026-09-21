@@ -1,5 +1,4 @@
-
-            package com.ayan.ecommerce.service;
+package com.ayan.ecommerce.service;
 
     import jakarta.mail.MessagingException;
     import jakarta.mail.internet.MimeMessage;
@@ -11,6 +10,7 @@
     import org.springframework.stereotype.Service;
 
     import java.io.UnsupportedEncodingException;
+    import java.math.BigDecimal;
     import java.nio.charset.StandardCharsets;
 
     @Service
@@ -352,7 +352,7 @@
                 String toEmail,
                 String customerName,
                 String orderNumber,
-                Double amount
+                BigDecimal amount
         ) {
 
             String formattedAmount =

@@ -7,7 +7,15 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface ReviewRepository extends JpaRepository<Review, Long> {
-    List<Review> findByProductId(Long productId);
-    boolean existsByUserIdAndProductId(Long userId, Long productId);
+public interface ReviewRepository
+        extends JpaRepository<Review, Long> {
+
+    List<Review> findByProductIdOrderByCreatedAtDesc(
+            Long productId
+    );
+
+    boolean existsByUserIdAndProductId(
+            Long userId,
+            Long productId
+    );
 }

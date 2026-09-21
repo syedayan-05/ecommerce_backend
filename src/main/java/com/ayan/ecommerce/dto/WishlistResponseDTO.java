@@ -9,15 +9,10 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class OrderItemResponseDTO {
-
+public class WishlistResponseDTO {
+    private Long wishlistId;
     private Long productId;
-
     private String productName;
-
-    private String productImage;
-
-    private Integer quantity;
-
     private BigDecimal price;
+    private String imageUrl;
 }

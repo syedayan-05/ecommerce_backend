@@ -3,6 +3,7 @@ package com.ayan.ecommerce.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -70,7 +71,7 @@ public class Payment {
             name = "amount",
             nullable = false
     )
-    private Double amount;
+    private BigDecimal amount;
 
     @Column(name = "payment_date")
     private LocalDateTime paymentDate;
@@ -82,6 +83,9 @@ public class Payment {
     )
     private OrderRequest order;
 
+    @OneToOne(mappedBy = "payment",fetch = FetchType.LAZY)
+    private Refund refund;
+
     @PrePersist
     protected void onCreate() {
 
@@ -89,4 +93,5 @@ public class Payment {
             paymentDate = LocalDateTime.now();
         }
     }
+
 }

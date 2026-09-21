@@ -241,7 +241,55 @@ public class SecurityConfig {
                                 "/addresses/**"
                         ).hasAnyRole("USER", "ADMIN")
 
+                        // =============================================
+                        // WISHLIST
+                        // USER + ADMIN
+                        // =============================================
 
+                        .requestMatchers(
+                                "/wishlist/**"
+                        ).hasAnyRole("USER","ADMIN")
+
+                        // =============================================
+                        // REVIEW
+                        // USER + ADMIN
+                        // =============================================
+                        .requestMatchers(
+                                "/reviews/**"
+                        ).hasAnyRole("USER", "ADMIN")
+
+
+                                // =============================================
+                                // GALLERY
+                                // PUBLIC GET APIs
+                                // =============================================
+
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/gallery",
+                                        "/api/gallery/**"
+                                ).permitAll()
+
+
+                                // =============================================
+                                // GALLERY
+                                // ADMIN WRITE APIs
+                        // =============================================
+
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/api/gallery"
+                                ).hasRole("ADMIN")
+
+                                .requestMatchers(
+                                        HttpMethod.PUT,
+                                        "/api/gallery/**"
+                                ).hasRole("ADMIN")
+
+                                .requestMatchers(
+                                        HttpMethod.DELETE,
+                                        "/api/gallery/**"
+                                ).hasRole("ADMIN")
                         // =============================================
                         // EVERYTHING ELSE
                         // =============================================
