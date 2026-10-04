@@ -1,9 +1,6 @@
 package com.ayan.ecommerce.config;
 
-import com.ayan.ecommerce.security.CustomAccessDeniedHandler;
-import com.ayan.ecommerce.security.CustomAuthenticationEntryPoint;
-import com.ayan.ecommerce.security.GoogleOAuth2SuccessHandler;
-import com.ayan.ecommerce.security.JwtAuthenticationFilter;
+import com.ayan.ecommerce.security.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,6 +10,11 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @EnableMethodSecurity
@@ -20,13 +22,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
+    private final RateLimitFilter rateLimitFilter;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
-
     private final CustomAccessDeniedHandler accessDeniedHandler;
-
     private final GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler;
 
+
+    // =========================================================
+    // SECURITY FILTER CHAIN
+    // =========================================================
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -35,17 +39,25 @@ public class SecurityConfig {
 
         http
 
-                // =============================================
+                // =================================================
                 // CSRF
-                // =============================================
+                // JWT based REST API
+                // =================================================
 
                 .csrf(csrf -> csrf.disable())
 
 
-                // =============================================
+                // =================================================
+                // CORS
+                // =================================================
+
+                .cors(cors -> {})
+
+
+                // =================================================
                 // SESSION
                 // JWT Based Authentication
-                // =============================================
+                // =================================================
 
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
@@ -54,20 +66,21 @@ public class SecurityConfig {
                 )
 
 
-                // =============================================
+                // =================================================
                 // AUTHORIZATION
-                // =============================================
+                // =================================================
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // =============================================
+                        // =================================================
                         // PUBLIC APIs
-                        // =============================================
+                        // =================================================
 
                         .requestMatchers(
                                 "/auth/**",
                                 "/test-email",
 
+                                // Swagger
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -81,10 +94,10 @@ public class SecurityConfig {
                         ).permitAll()
 
 
-                        // =============================================
+                        // =================================================
                         // PUBLIC CATEGORY APIs
                         // Anyone can view categories
-                        // =============================================
+                        // =================================================
 
                         .requestMatchers(
                                 HttpMethod.GET,
@@ -93,10 +106,10 @@ public class SecurityConfig {
                         ).permitAll()
 
 
-                        // =============================================
+                        // =================================================
                         // PUBLIC PRODUCT APIs
                         // Anyone can view products
-                        // =============================================
+                        // =================================================
 
                         .requestMatchers(
                                 HttpMethod.GET,
@@ -105,9 +118,9 @@ public class SecurityConfig {
                         ).permitAll()
 
 
-                        // =============================================
+                        // =================================================
                         // ADMIN PRODUCT APIs
-                        // =============================================
+                        // =================================================
 
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -128,9 +141,9 @@ public class SecurityConfig {
                         ).hasRole("ADMIN")
 
 
-                        // =============================================
+                        // =================================================
                         // ADMIN CATEGORY APIs
-                        // =============================================
+                        // =================================================
 
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -151,25 +164,22 @@ public class SecurityConfig {
                         ).hasRole("ADMIN")
 
 
-                        // =============================================
+                        // =================================================
                         // CART
                         // USER + ADMIN
-                        // =============================================
+                        // =================================================
 
                         .requestMatchers(
                                 "/cart/**"
                         ).hasAnyRole("USER", "ADMIN")
 
 
-                        // =============================================
+                        // =================================================
                         // ORDERS
-                        // =============================================
+                        // =================================================
 
-                        // ---------------------------------------------
                         // ADMIN ORDER APIs
-                        // IMPORTANT:
-                        // Keep these BEFORE generic /orders/**
-                        // ---------------------------------------------
+                        // Keep before generic /orders/**
 
                         .requestMatchers(
                                 HttpMethod.GET,
@@ -182,9 +192,7 @@ public class SecurityConfig {
                         ).hasRole("ADMIN")
 
 
-                        // ---------------------------------------------
                         // CUSTOMER ORDER APIs
-                        // ---------------------------------------------
 
                         .requestMatchers(
                                 HttpMethod.POST,
@@ -197,8 +205,9 @@ public class SecurityConfig {
                         ).hasRole("USER")
 
 
-                        // Customer + Admin can access order details
-                        // Ownership is checked in service layer
+                        // Customer + Admin order details
+                        // Ownership checked in service layer
+
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/orders/**"
@@ -206,101 +215,107 @@ public class SecurityConfig {
 
 
                         // Customer order cancellation
+
                         .requestMatchers(
                                 HttpMethod.PUT,
                                 "/orders/**"
                         ).hasRole("USER")
 
 
-                        // =============================================
+                        // =================================================
                         // PAYMENTS
                         // USER + ADMIN
-                        // =============================================
+                        // =================================================
 
                         .requestMatchers(
                                 "/api/payments/**"
                         ).hasAnyRole("USER", "ADMIN")
 
 
-                        // =============================================
+                        // =================================================
                         // USERS
                         // USER + ADMIN
-                        // =============================================
+                        // =================================================
 
                         .requestMatchers(
                                 "/users/**"
                         ).hasAnyRole("USER", "ADMIN")
 
 
-                        // =============================================
+                        // =================================================
                         // ADDRESSES
                         // USER + ADMIN
-                        // =============================================
+                        // =================================================
 
                         .requestMatchers(
                                 "/addresses/**"
                         ).hasAnyRole("USER", "ADMIN")
 
-                        // =============================================
+
+                        // =================================================
                         // WISHLIST
                         // USER + ADMIN
-                        // =============================================
+                        // =================================================
 
                         .requestMatchers(
                                 "/wishlist/**"
-                        ).hasAnyRole("USER","ADMIN")
+                        ).hasAnyRole("USER", "ADMIN")
 
-                        // =============================================
-                        // REVIEW
+
+                        // =================================================
+                        // REVIEWS
                         // USER + ADMIN
-                        // =============================================
+                        // =================================================
+
                         .requestMatchers(
                                 "/reviews/**"
                         ).hasAnyRole("USER", "ADMIN")
 
 
-                                // =============================================
-                                // GALLERY
-                                // PUBLIC GET APIs
-                                // =============================================
+                        // =================================================
+                        // GALLERY
+                        // PUBLIC GET APIs
+                        // =================================================
 
-                                .requestMatchers(
-                                        HttpMethod.GET,
-                                        "/api/gallery",
-                                        "/api/gallery/**"
-                                ).permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/gallery",
+                                "/api/gallery/**"
+                        ).permitAll()
 
 
-                                // =============================================
-                                // GALLERY
-                                // ADMIN WRITE APIs
-                        // =============================================
+                        // =================================================
+                        // GALLERY
+                        // ADMIN WRITE APIs
+                        // =================================================
 
-                                .requestMatchers(
-                                        HttpMethod.POST,
-                                        "/api/gallery"
-                                ).hasRole("ADMIN")
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/gallery"
+                        ).hasRole("ADMIN")
 
-                                .requestMatchers(
-                                        HttpMethod.PUT,
-                                        "/api/gallery/**"
-                                ).hasRole("ADMIN")
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/gallery/**"
+                        ).hasRole("ADMIN")
 
-                                .requestMatchers(
-                                        HttpMethod.DELETE,
-                                        "/api/gallery/**"
-                                ).hasRole("ADMIN")
-                        // =============================================
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/gallery/**"
+                        ).hasRole("ADMIN")
+
+
+                        // =================================================
                         // EVERYTHING ELSE
-                        // =============================================
+                        // =================================================
 
                         .anyRequest().authenticated()
                 )
 
 
-                // =============================================
+                // =================================================
                 // GOOGLE OAUTH2
-                // =============================================
+                // =================================================
 
                 .oauth2Login(oauth ->
                         oauth.successHandler(
@@ -309,9 +324,9 @@ public class SecurityConfig {
                 )
 
 
-                // =============================================
+                // =================================================
                 // EXCEPTION HANDLING
-                // =============================================
+                // =================================================
 
                 .exceptionHandling(exception -> exception
 
@@ -327,16 +342,72 @@ public class SecurityConfig {
                 )
 
 
-                // =============================================
+                // =================================================
                 // JWT FILTER
-                // =============================================
+                // =================================================
 
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
+                )
+
+
+                // =================================================
+                // RATE LIMIT FILTER
+                // =================================================
+
+                .addFilterBefore(
+                        rateLimitFilter,
+                        JwtAuthenticationFilter.class
                 );
 
-
         return http.build();
+    }
+
+
+    // =============================================================
+    // CORS CONFIGURATION
+    // =============================================================
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+
+        CorsConfiguration configuration =
+                new CorsConfiguration();
+
+        // React frontend
+        configuration.setAllowedOrigins(
+                List.of("http://localhost:3000")
+        );
+
+        // Allowed HTTP methods
+        configuration.setAllowedMethods(
+                List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "DELETE",
+                        "PATCH",
+                        "OPTIONS"
+                )
+        );
+
+        // Allow all request headers
+        configuration.setAllowedHeaders(
+                List.of("*")
+        );
+
+        // Allow cookies / credentials
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration(
+                "/**",
+                configuration
+        );
+
+        return source;
     }
 }

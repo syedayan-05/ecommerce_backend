@@ -1,17 +1,14 @@
 package com.ayan.ecommerce.service;
 
+import org.apache.tika.Tika;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.Map;
-import java.util.Set;
 
 @Component
 public class GalleryFileValidator {
-
-    // =========================================================
-    // FILE SIZE LIMITS
-    // =========================================================
 
     private static final long MAX_IMAGE_SIZE =
             5L * 1024 * 1024; // 5 MB
@@ -19,154 +16,191 @@ public class GalleryFileValidator {
     private static final long MAX_VIDEO_SIZE =
             100L * 1024 * 1024; // 100 MB
 
+    private static final Map<String, String> ALLOWED_TYPES =
+            Map.ofEntries(
 
-    // =========================================================
-    // ALLOWED MIME TYPES + EXTENSIONS
-    // =========================================================
+                    Map.entry(
+                            "jpg",
+                            "image/jpeg"
+                    ),
 
-    private static final Map<String, Set<String>> ALLOWED_IMAGE_TYPES =
-            Map.of(
-                    "image/jpeg", Set.of("jpg", "jpeg"),
-                    "image/png", Set.of("png"),
-                    "image/webp", Set.of("webp")
+                    Map.entry(
+                            "jpeg",
+                            "image/jpeg"
+                    ),
+
+                    Map.entry(
+                            "png",
+                            "image/png"
+                    ),
+
+                    Map.entry(
+                            "webp",
+                            "image/webp"
+                    ),
+
+                    Map.entry(
+                            "mp4",
+                            "video/mp4"
+                    ),
+
+                    Map.entry(
+                            "webm",
+                            "video/webm"
+                    ),
+
+                    Map.entry(
+                            "mov",
+                            "video/quicktime"
+                    )
             );
 
-    private static final Map<String, Set<String>> ALLOWED_VIDEO_TYPES =
-            Map.of(
-                    "video/mp4", Set.of("mp4"),
-                    "video/webm", Set.of("webm"),
-                    "video/quicktime", Set.of("mov")
-            );
+    private final Tika tika = new Tika();
 
-
-    // =========================================================
-    // IMAGE VALIDATION
-    // =========================================================
-
-    public void validateImage(MultipartFile file) {
+    public void validate(MultipartFile file) {
 
         validateFileExists(file);
 
+        String extension =
+                extractExtension(
+                        file.getOriginalFilename()
+                );
+
+        String declaredContentType =
+                normalizeContentType(
+                        file.getContentType()
+                );
+
         validateFileSize(
                 file,
-                MAX_IMAGE_SIZE,
-                "Image"
+                extension
         );
 
-        String contentType =
-                normalizeContentType(file.getContentType());
+        String expectedContentType =
+                ALLOWED_TYPES.get(extension);
 
-        String extension =
-                extractExtension(file.getOriginalFilename());
-
-        Set<String> allowedExtensions =
-                ALLOWED_IMAGE_TYPES.get(contentType);
-
-        if (allowedExtensions == null) {
+        if (expectedContentType == null) {
 
             throw new IllegalArgumentException(
-                    "Unsupported image type. Allowed types: JPG, JPEG, PNG, WEBP"
+                    "Unsupported file format"
             );
         }
 
-        if (!allowedExtensions.contains(extension)) {
+        if (!expectedContentType.equals(
+                declaredContentType
+        )) {
 
             throw new IllegalArgumentException(
-                    "File extension does not match the image content type"
+                    "File extension and declared content type do not match"
+            );
+        }
+
+        String actualContentType =
+                detectActualContentType(file);
+
+        if (!expectedContentType.equals(
+                actualContentType
+        )) {
+
+            throw new IllegalArgumentException(
+                    "File content does not match the declared file type"
             );
         }
     }
 
-
-    // =========================================================
-    // VIDEO VALIDATION
-    // =========================================================
-
-    public void validateVideo(MultipartFile file) {
-
-        validateFileExists(file);
-
-        validateFileSize(
-                file,
-                MAX_VIDEO_SIZE,
-                "Video"
-        );
-
-        String contentType =
-                normalizeContentType(file.getContentType());
-
-        String extension =
-                extractExtension(file.getOriginalFilename());
-
-        Set<String> allowedExtensions =
-                ALLOWED_VIDEO_TYPES.get(contentType);
-
-        if (allowedExtensions == null) {
-
-            throw new IllegalArgumentException(
-                    "Unsupported video type. Allowed types: MP4, WEBM, MOV"
-            );
-        }
-
-        if (!allowedExtensions.contains(extension)) {
-
-            throw new IllegalArgumentException(
-                    "File extension does not match the video content type"
-            );
-        }
-    }
-
-
-    // =========================================================
-    // FILE EXISTS CHECK
-    // =========================================================
-
-    private void validateFileExists(MultipartFile file) {
+    private void validateFileExists(
+            MultipartFile file
+    ) {
 
         if (file == null || file.isEmpty()) {
 
             throw new IllegalArgumentException(
-                    "Gallery file is required"
+                    "File is required"
             );
         }
     }
-
-
-    // =========================================================
-    // FILE SIZE CHECK
-    // =========================================================
 
     private void validateFileSize(
             MultipartFile file,
-            long maxSize,
-            String fileType) {
+            String extension
+    ) {
+
+        long maxSize;
+
+        if (isImage(extension)) {
+
+            maxSize = MAX_IMAGE_SIZE;
+
+        } else if (isVideo(extension)) {
+
+            maxSize = MAX_VIDEO_SIZE;
+
+        } else {
+
+            throw new IllegalArgumentException(
+                    "Unsupported file format"
+            );
+        }
 
         if (file.getSize() > maxSize) {
 
-            long maxSizeInMb =
-                    maxSize / (1024 * 1024);
+            String limit =
+                    isImage(extension)
+                            ? "5 MB"
+                            : "100 MB";
 
             throw new IllegalArgumentException(
-                    fileType
-                            + " size cannot exceed "
-                            + maxSizeInMb
-                            + " MB"
+                    "File size must not exceed "
+                            + limit
             );
         }
     }
 
+    private String detectActualContentType(
+            MultipartFile file
+    ) {
 
-    // =========================================================
-    // MIME TYPE NORMALIZATION
-    // =========================================================
+        try {
 
-    private String normalizeContentType(
-            String contentType) {
+            String detectedType =
+                    tika.detect(
+                            file.getInputStream(),
+                            file.getOriginalFilename()
+                    );
 
-        if (contentType == null) {
+            if (detectedType == null
+                    || detectedType.isBlank()
+                    || detectedType.equalsIgnoreCase(
+                    "application/octet-stream"
+            )) {
+
+                throw new IllegalArgumentException(
+                        "Unable to determine actual file type"
+                );
+            }
+
+            return detectedType
+                    .trim()
+                    .toLowerCase();
+
+        } catch (IOException e) {
 
             throw new IllegalArgumentException(
-                    "Unable to determine file content type"
+                    "Unable to validate uploaded file",
+                    e
+            );
+        }
+    }
+
+    private String normalizeContentType(
+            String contentType
+    ) {
+
+        if (contentType == null
+                || contentType.isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "File content type is required"
             );
         }
 
@@ -175,38 +209,53 @@ public class GalleryFileValidator {
                 .toLowerCase();
     }
 
-
-    // =========================================================
-    // FILE EXTENSION EXTRACTION
-    // =========================================================
-
     private String extractExtension(
-            String originalFilename) {
+            String filename
+    ) {
 
-        if (originalFilename == null
-                || originalFilename.isBlank()) {
+        if (filename == null
+                || filename.isBlank()) {
 
             throw new IllegalArgumentException(
-                    "Original file name is required"
+                    "Filename is required"
             );
         }
 
-        String fileName =
-                originalFilename.trim();
+        String cleanFilename =
+                filename.trim();
 
         int lastDot =
-                fileName.lastIndexOf('.');
+                cleanFilename.lastIndexOf('.');
 
         if (lastDot <= 0
-                || lastDot == fileName.length() - 1) {
+                || lastDot == cleanFilename.length() - 1) {
 
             throw new IllegalArgumentException(
                     "File must have a valid extension"
             );
         }
 
-        return fileName
+        return cleanFilename
                 .substring(lastDot + 1)
                 .toLowerCase();
+    }
+
+    private boolean isImage(
+            String extension
+    ) {
+
+        return extension.equals("jpg")
+                || extension.equals("jpeg")
+                || extension.equals("png")
+                || extension.equals("webp");
+    }
+
+    private boolean isVideo(
+            String extension
+    ) {
+
+        return extension.equals("mp4")
+                || extension.equals("webm")
+                || extension.equals("mov");
     }
 }

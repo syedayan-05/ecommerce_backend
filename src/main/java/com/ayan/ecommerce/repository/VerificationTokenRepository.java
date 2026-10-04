@@ -29,10 +29,13 @@ public interface VerificationTokenRepository
             OtpPurpose purpose
     );
 
-
     Optional<VerificationToken> findByUser(
             User user
     );
 
-
+    // NEW
+    Optional<VerificationToken> findByUserAndPurposeAndVerifiedFalse(
+            User user,
+            OtpPurpose purpose
+    );
 }

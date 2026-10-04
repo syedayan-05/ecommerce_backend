@@ -21,9 +21,10 @@ public class RegisterRequestDTO {
     @NotBlank(message = "Email is required")
     private String email;
 
+    @NotBlank(message = "Phone number is required")
     @Pattern(
             regexp = "^[6-9]\\d{9}$",
-            message = "Enter Valid mobile number"
+            message = "Enter a valid 10-digit mobile number"
     )
     private String phoneNumber;
 

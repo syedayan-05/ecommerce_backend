@@ -15,12 +15,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -28,6 +28,7 @@ public class AuthService {
     private final VerificationTokenRepository repository;
     private final EmailService emailService;
     private final CartRepository cartRepository;
+    private final RateLimitService rateLimitService;
 
     private static final SecureRandom SECURE_RANDOM =
             new SecureRandom();
@@ -37,10 +38,13 @@ public class AuthService {
 // REGISTER
 // =========================================================
 
+    @Transactional
     public String register(RegisterRequestDTO dto) {
 
         if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new BadRequestException("Email Already Exists");
+            throw new BadRequestException(
+                    "Email Already Exists"
+            );
         }
 
         User user = User.builder()
@@ -56,7 +60,8 @@ public class AuthService {
                 .verified(false)
                 .build();
 
-        User savedUser = userRepository.save(user);
+        User savedUser =
+                userRepository.save(user);
 
 
         // =====================================================
@@ -71,7 +76,7 @@ public class AuthService {
 
 
         // =====================================================
-        // GENERATE SECURE 6 DIGIT OTP
+        // GENERATE EMAIL VERIFICATION OTP
         // =====================================================
 
         String otp = generateOtp();
@@ -95,7 +100,7 @@ public class AuthService {
 
 
         // =====================================================
-        // SEND VERIFICATION OTP EMAIL
+        // SEND VERIFICATION OTP
         // =====================================================
 
         emailService.sendVerificationOtp(
@@ -111,14 +116,20 @@ public class AuthService {
 // LOGIN
 // =========================================================
 
-    public String Login(LoginRequestDTO dto) {
+    public String login(LoginRequestDTO dto) {
 
-        User user = userRepository.findByEmail(dto.getEmail())
-                .orElseThrow(() ->
-                        new UnauthorizedException(
-                                "Invalid Credentials"
-                        )
-                );
+        User user =
+                userRepository.findByEmail(dto.getEmail())
+                        .orElseThrow(() ->
+                                new UnauthorizedException(
+                                        "Invalid Credentials"
+                                )
+                        );
+
+
+        // =====================================================
+        // EMAIL VERIFICATION CHECK
+        // =====================================================
 
         if (!user.isVerified()) {
             throw new BadRequestException(
@@ -126,14 +137,174 @@ public class AuthService {
             );
         }
 
+
+        // =====================================================
+        // PASSWORD CHECK
+        // =====================================================
+
         if (!passwordEncoder.matches(
                 dto.getPassword(),
                 user.getPassword()
         )) {
+
             throw new UnauthorizedException(
                     "Invalid Credentials"
             );
         }
+
+
+        // =====================================================
+        // GENERATE LOGIN OTP
+        // =====================================================
+
+        String otp = generateOtp();
+
+
+        VerificationToken token =
+                repository.findByUser(user)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Verification token not found"
+                                )
+                        );
+
+
+        token.setOtp(otp);
+        token.setPurpose(OtpPurpose.LOGIN_OTP);
+        token.setVerified(false);
+        token.setExpiryTime(
+                LocalDateTime.now().plusMinutes(5)
+        );
+
+        repository.save(token);
+
+
+        // =====================================================
+        // RESET LOGIN OTP ATTEMPTS
+        // =====================================================
+
+        String attemptKey =
+                "otp:attempts:LOGIN_OTP:"
+                        + user.getId();
+
+        rateLimitService.reset(attemptKey);
+
+
+        // =====================================================
+        // SEND LOGIN OTP
+        // =====================================================
+
+        emailService.sendLoginOtp(
+                user.getEmail(),
+                otp
+        );
+
+        return "Login OTP sent successfully";
+    }
+
+
+// =========================================================
+// VERIFY LOGIN OTP
+// =========================================================
+
+    @Transactional
+    public String verifyLoginOtp(
+            VerifyLoginOtpDTO dto
+    ) {
+
+        User user =
+                userRepository.findByEmail(dto.getEmail())
+                        .orElseThrow(() ->
+                                new UnauthorizedException(
+                                        "Invalid OTP"
+                                )
+                        );
+
+
+        VerificationToken token =
+                repository
+                        .findByUserAndPurposeAndVerifiedFalse(
+                                user,
+                                OtpPurpose.LOGIN_OTP
+                        )
+                        .orElseThrow(() ->
+                                new BadRequestException(
+                                        "Invalid or expired login OTP"
+                                )
+                        );
+
+
+        // =====================================================
+        // CHECK OTP EXPIRY
+        // =====================================================
+
+        if (token.getExpiryTime()
+                .isBefore(LocalDateTime.now())) {
+
+            throw new BadRequestException(
+                    "OTP Expired"
+            );
+        }
+
+
+        // =====================================================
+        // OTP ATTEMPT KEY
+        // =====================================================
+
+        String attemptKey =
+                "otp:attempts:LOGIN_OTP:"
+                        + user.getId();
+
+
+        // =====================================================
+        // CHECK OTP
+        // =====================================================
+
+        if (!token.getOtp().equals(dto.getOtp())) {
+
+            long attempts =
+                    rateLimitService.incrementAndGet(
+                            attemptKey,
+                            Duration.ofMinutes(5)
+                    );
+
+
+            // =================================================
+            // INVALIDATE OTP AFTER 5 FAILED ATTEMPTS
+            // =================================================
+
+            if (attempts >= 5) {
+
+                token.setVerified(true);
+                repository.save(token);
+
+                rateLimitService.reset(attemptKey);
+
+                throw new BadRequestException(
+                        "Too many invalid OTP attempts. Please login again."
+                );
+            }
+
+
+            throw new BadRequestException(
+                    "Invalid OTP"
+            );
+        }
+
+
+        // =====================================================
+        // OTP CORRECT
+        // =====================================================
+
+        token.setVerified(true);
+        repository.save(token);
+
+        rateLimitService.reset(attemptKey);
+
+
+        // =====================================================
+        // GENERATE JWT ONLY AFTER OTP VERIFICATION
+        // =====================================================
 
         return jwtService.generateToken(user);
     }
@@ -143,14 +314,16 @@ public class AuthService {
 // VERIFY EMAIL
 // =========================================================
 
+    @Transactional
     public String verifyEmail(VerifyOtpDTO dto) {
 
-        User user = userRepository.findByEmail(dto.getEmail())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found"
-                        )
-                );
+        User user =
+                userRepository.findByEmail(dto.getEmail())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "User not found"
+                                )
+                        );
 
 
         VerificationToken verificationToken =
@@ -191,7 +364,7 @@ public class AuthService {
 
 
         // =====================================================
-        // VERIFY USER + OTP
+        // VERIFY USER
         // =====================================================
 
         verificationToken.setVerified(true);
@@ -210,7 +383,6 @@ public class AuthService {
                 user.getName()
         );
 
-
         return "Email Verified Successfully";
     }
 
@@ -224,14 +396,15 @@ public class AuthService {
             ForgetPasswordDTO forgetPasswordDTO
     ) {
 
-        User user = userRepository.findByEmail(
-                        forgetPasswordDTO.getEmail()
-                )
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User Not Found"
+        User user =
+                userRepository.findByEmail(
+                                forgetPasswordDTO.getEmail()
                         )
-                );
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "User Not Found"
+                                )
+                        );
 
 
         if (!user.isVerified()) {
@@ -242,44 +415,39 @@ public class AuthService {
 
 
         // =====================================================
-        // GENERATE SECURE OTP
+        // GENERATE OTP
         // =====================================================
 
         String otp = generateOtp();
 
 
-        /*
-         * Reuse the existing VerificationToken row.
-         * The purpose is changed to PASSWORD_RESET.
-         */
+        // =====================================================
+        // REUSE VERIFICATION TOKEN
+        // =====================================================
 
         VerificationToken token =
                 repository.findByUser(user)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ResourceNotFoundException(
                                         "Verification token not found"
                                 )
                         );
 
 
         token.setOtp(otp);
-
         token.setPurpose(
                 OtpPurpose.PASSWORD_RESET
         );
-
         token.setVerified(false);
-
         token.setExpiryTime(
                 LocalDateTime.now().plusMinutes(5)
         );
-
 
         repository.save(token);
 
 
         // =====================================================
-        // SEND PASSWORD RESET OTP EMAIL
+        // SEND PASSWORD RESET OTP
         // =====================================================
 
         emailService.sendPasswordResetOtp(
@@ -298,14 +466,15 @@ public class AuthService {
             ResetPasswordDTO resetPasswordDTO
     ) {
 
-        User user = userRepository.findByEmail(
-                        resetPasswordDTO.getEmail()
-                )
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not Found"
+        User user =
+                userRepository.findByEmail(
+                                resetPasswordDTO.getEmail()
                         )
-                );
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "User not Found"
+                                )
+                        );
 
 
         VerificationToken token =
@@ -367,12 +536,13 @@ public class AuthService {
             ResendOtpDTO dto
     ) {
 
-        User user = userRepository.findByEmail(dto.getEmail())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found"
-                        )
-                );
+        User user =
+                userRepository.findByEmail(dto.getEmail())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "User not found"
+                                )
+                        );
 
 
         if (user.isVerified()) {
@@ -395,23 +565,19 @@ public class AuthService {
 
 
         token.setOtp(otp);
-
         token.setPurpose(
                 OtpPurpose.EMAIL_VERIFICATION
         );
-
         token.setVerified(false);
-
         token.setExpiryTime(
                 LocalDateTime.now().plusMinutes(5)
         );
-
 
         repository.save(token);
 
 
         // =====================================================
-        // SEND NEW VERIFICATION OTP
+        // SEND NEW OTP
         // =====================================================
 
         emailService.sendVerificationOtp(
@@ -430,12 +596,13 @@ public class AuthService {
             ResendOtpDTO dto
     ) {
 
-        User user = userRepository.findByEmail(dto.getEmail())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found"
-                        )
-                );
+        User user =
+                userRepository.findByEmail(dto.getEmail())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "User not found"
+                                )
+                        );
 
 
         if (!user.isVerified()) {
@@ -458,17 +625,13 @@ public class AuthService {
 
 
         token.setOtp(otp);
-
         token.setPurpose(
                 OtpPurpose.PASSWORD_RESET
         );
-
         token.setVerified(false);
-
         token.setExpiryTime(
                 LocalDateTime.now().plusMinutes(5)
         );
-
 
         repository.save(token);
 
@@ -494,6 +657,4 @@ public class AuthService {
                 100000 + SECURE_RANDOM.nextInt(900000)
         );
     }
-
-
 }

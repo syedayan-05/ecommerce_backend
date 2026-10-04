@@ -17,13 +17,12 @@ import java.time.LocalDateTime;
 public class AuthController {
 
     private final AuthService service;
-
     private final EmailService emailService;
 
 
-    // =====================================================
-    // REGISTER
-    // =====================================================
+// =====================================================
+// REGISTER
+// =====================================================
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<String>> register(
@@ -32,12 +31,13 @@ public class AuthController {
 
         String message = service.register(dto);
 
-        ApiResponse<String> response = new ApiResponse<>(
-                true,
-                message,
-                null,
-                LocalDateTime.now()
-        );
+        ApiResponse<String> response =
+                new ApiResponse<>(
+                        true,
+                        message,
+                        null,
+                        LocalDateTime.now()
+                );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -45,53 +45,80 @@ public class AuthController {
     }
 
 
-    // =====================================================
-    // LOGIN
-    // =====================================================
+// =====================================================
+// LOGIN
+// =====================================================
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<String>> login(
             @Valid @RequestBody LoginRequestDTO dto
     ) {
 
-        String token = service.Login(dto);
+        String message = service.login(dto);
 
-        ApiResponse<String> response = new ApiResponse<>(
-                true,
-                "Login successful",
-                token,
-                LocalDateTime.now()
-        );
+        ApiResponse<String> response =
+                new ApiResponse<>(
+                        true,
+                        message,
+                        null,
+                        LocalDateTime.now()
+                );
 
         return ResponseEntity.ok(response);
     }
 
 
-    // =====================================================
-    // VERIFY EMAIL
-    // =====================================================
+// =====================================================
+// VERIFY LOGIN OTP
+// =====================================================
+
+    @PostMapping("/verify-login-otp")
+    public ResponseEntity<ApiResponse<String>> verifyLoginOtp(
+            @Valid @RequestBody VerifyLoginOtpDTO dto
+    ) {
+
+        String token =
+                service.verifyLoginOtp(dto);
+
+        ApiResponse<String> response =
+                new ApiResponse<>(
+                        true,
+                        "Login successful",
+                        token,
+                        LocalDateTime.now()
+                );
+
+        return ResponseEntity.ok(response);
+    }
+
+
+// =====================================================
+// VERIFY EMAIL
+// =====================================================
 
     @PostMapping("/verify")
     public ResponseEntity<ApiResponse<String>> verify(
             @Valid @RequestBody VerifyOtpDTO dto
     ) {
 
-        String message = service.verifyEmail(dto);
+        String message =
+                service.verifyEmail(dto);
 
-        ApiResponse<String> response = new ApiResponse<>(
-                true,
-                message,
-                null,
-                LocalDateTime.now()
-        );
+        ApiResponse<String> response =
+                new ApiResponse<>(
+                        true,
+                        message,
+                        null,
+                        LocalDateTime.now()
+                );
 
         return ResponseEntity.ok(response);
     }
 
 
-    // =====================================================
-    // FORGET PASSWORD
-    // =====================================================
+// =====================================================
+// FORGET PASSWORD
+// =====================================================
 
     @PostMapping("/forget-password")
     public ResponseEntity<ApiResponse<String>> forgetPassword(
@@ -100,20 +127,21 @@ public class AuthController {
 
         service.forgetPassword(dto);
 
-        ApiResponse<String> response = new ApiResponse<>(
-                true,
-                "Password reset OTP sent successfully",
-                null,
-                LocalDateTime.now()
-        );
+        ApiResponse<String> response =
+                new ApiResponse<>(
+                        true,
+                        "Password reset OTP sent successfully",
+                        null,
+                        LocalDateTime.now()
+                );
 
         return ResponseEntity.ok(response);
     }
 
 
-    // =====================================================
-    // RESET PASSWORD
-    // =====================================================
+// =====================================================
+// RESET PASSWORD
+// =====================================================
 
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<String>> resetPassword(
@@ -122,20 +150,21 @@ public class AuthController {
 
         service.resetPassword(dto);
 
-        ApiResponse<String> response = new ApiResponse<>(
-                true,
-                "Password reset successfully",
-                null,
-                LocalDateTime.now()
-        );
+        ApiResponse<String> response =
+                new ApiResponse<>(
+                        true,
+                        "Password reset successfully",
+                        null,
+                        LocalDateTime.now()
+                );
 
         return ResponseEntity.ok(response);
     }
 
 
-    // =====================================================
-    // RESEND EMAIL VERIFICATION OTP
-    // =====================================================
+// =====================================================
+// RESEND EMAIL VERIFICATION OTP
+// =====================================================
 
     @PostMapping("/resend-verification-otp")
     public ResponseEntity<ApiResponse<String>> resendVerificationOtp(
@@ -144,20 +173,21 @@ public class AuthController {
 
         service.resendVerificationsOtp(dto);
 
-        ApiResponse<String> response = new ApiResponse<>(
-                true,
-                "Verification OTP sent successfully",
-                null,
-                LocalDateTime.now()
-        );
+        ApiResponse<String> response =
+                new ApiResponse<>(
+                        true,
+                        "Verification OTP sent successfully",
+                        null,
+                        LocalDateTime.now()
+                );
 
         return ResponseEntity.ok(response);
     }
 
 
-    // =====================================================
-    // RESEND PASSWORD RESET OTP
-    // =====================================================
+// =====================================================
+// RESEND PASSWORD RESET OTP
+// =====================================================
 
     @PostMapping("/resend-password-reset-otp")
     public ResponseEntity<ApiResponse<String>> resendPasswordResetOtp(
@@ -166,15 +196,21 @@ public class AuthController {
 
         service.resendPasswordResetOtp(dto);
 
-        ApiResponse<String> response = new ApiResponse<>(
-                true,
-                "Password reset OTP sent successfully",
-                null,
-                LocalDateTime.now()
-        );
+        ApiResponse<String> response =
+                new ApiResponse<>(
+                        true,
+                        "Password reset OTP sent successfully",
+                        null,
+                        LocalDateTime.now()
+                );
 
         return ResponseEntity.ok(response);
     }
+
+
+// =====================================================
+// TEST EMAIL
+// =====================================================
 
     @PostMapping("/test-email")
     public String testEmail(
@@ -185,5 +221,4 @@ public class AuthController {
 
         return "Email sent successfully";
     }
-
 }

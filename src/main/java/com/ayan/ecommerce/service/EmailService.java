@@ -765,6 +765,41 @@ package com.ayan.ecommerce.service;
                     );
         }
 
+        public void sendLoginOtp(
+                String toEmail,
+                String otp
+        ) {
+
+            String content = """
+            <p>Hello,</p>
+
+            <p>
+                Use the following OTP to complete your
+                Sufi Leather login:
+            </p>
+
+            <h2>%s</h2>
+
+            <p>
+                This login verification code is valid
+                for 5 minutes.
+            </p>
+
+            <p>
+                If you did not attempt to log in,
+                please secure your account.
+            </p>
+            """.formatted(
+                    escapeHtml(otp)
+            );
+
+            sendHtmlEmail(
+                    toEmail,
+                    "Sufi Leather Login Verification Code",
+                    content
+            );
+        }
+
 
         // =========================================================
         // HTML ESCAPING

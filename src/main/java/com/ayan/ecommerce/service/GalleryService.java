@@ -23,12 +23,13 @@ public class GalleryService {
     private final CloudinaryService cloudinaryService;
     private final GalleryFileValidator galleryFileValidator;
 
-
     // =========================================================
     // ENTITY -> DTO
     // =========================================================
 
-    private GalleryResponseDTO mapToDTO(Gallery gallery) {
+    private GalleryResponseDTO mapToDTO(
+            Gallery gallery
+    ) {
 
         return GalleryResponseDTO.builder()
                 .id(gallery.getId())
@@ -41,7 +42,6 @@ public class GalleryService {
                 .build();
     }
 
-
     // =========================================================
     // CREATE GALLERY
     // =========================================================
@@ -49,19 +49,27 @@ public class GalleryService {
     @Transactional
     public GalleryResponseDTO createGallery(
             GalleryRequestDTO dto,
-            MultipartFile file) {
+            MultipartFile file
+    ) {
 
-        validateFile(file);
-
-        GalleryMediaType mediaType = determineMediaType(file);
+        GalleryMediaType mediaType =
+                determineMediaType(file);
 
         Map<String, Object> uploadResult =
-                uploadToCloudinary(file, mediaType);
+                uploadToCloudinary(
+                        file,
+                        mediaType
+                );
 
-        String mediaUrl = (String) uploadResult.get("secure_url");
-        String publicId = (String) uploadResult.get("public_id");
+        String mediaUrl =
+                (String) uploadResult.get("secure_url");
 
-        if (mediaUrl == null || publicId == null) {
+        String publicId =
+                (String) uploadResult.get("public_id");
+
+        if (mediaUrl == null
+                || publicId == null) {
+
             throw new RuntimeException(
                     "Cloudinary upload failed: missing media information"
             );
@@ -69,17 +77,18 @@ public class GalleryService {
 
         try {
 
-            Gallery gallery = Gallery.builder()
-                    .title(dto.getTitle())
-                    .description(dto.getDescription())
-                    .mediaUrl(mediaUrl)
-                    .publicId(publicId)
-                    .mediaType(mediaType)
-                    .category(dto.getCategory())
-                    .sortOrder(dto.getSortOrder())
-                    .active(dto.isActive())
-                    .createdAt(LocalDateTime.now())
-                    .build();
+            Gallery gallery =
+                    Gallery.builder()
+                            .title(dto.getTitle())
+                            .description(dto.getDescription())
+                            .mediaUrl(mediaUrl)
+                            .publicId(publicId)
+                            .mediaType(mediaType)
+                            .category(dto.getCategory())
+                            .sortOrder(dto.getSortOrder())
+                            .active(dto.isActive())
+                            .createdAt(LocalDateTime.now())
+                            .build();
 
             Gallery savedGallery =
                     galleryRepository.save(gallery);
@@ -89,10 +98,11 @@ public class GalleryService {
         } catch (Exception e) {
 
             // DB save failed after Cloudinary upload.
-            // Remove the newly uploaded Cloudinary asset
-            // to avoid an orphaned file.
-
-            deleteFromCloudinary(publicId, mediaType);
+            // Remove newly uploaded Cloudinary asset.
+            deleteFromCloudinary(
+                    publicId,
+                    mediaType
+            );
 
             throw new RuntimeException(
                     "Failed to save gallery item",
@@ -100,7 +110,6 @@ public class GalleryService {
             );
         }
     }
-
 
     // =========================================================
     // GET ALL ACTIVE GALLERY
@@ -116,42 +125,45 @@ public class GalleryService {
                 .toList();
     }
 
-
     // =========================================================
     // GET GALLERY BY CATEGORY
     // =========================================================
 
     @Transactional(readOnly = true)
     public List<GalleryResponseDTO> getGalleryByCategory(
-            GalleryCategory category) {
+            GalleryCategory category
+    ) {
 
         return galleryRepository
-                .findByCategoryAndActiveTrueOrderBySortOrderAsc(category)
+                .findByCategoryAndActiveTrueOrderBySortOrderAsc(
+                        category
+                )
                 .stream()
                 .map(this::mapToDTO)
                 .toList();
     }
-
 
     // =========================================================
     // GET GALLERY BY ID
     // =========================================================
 
     @Transactional(readOnly = true)
-    public GalleryResponseDTO getGalleryById(Long id) {
+    public GalleryResponseDTO getGalleryById(
+            Long id
+    ) {
 
-        Gallery gallery = galleryRepository
-                .findById(id)
-                .filter(Gallery::isActive)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Gallery item not found with id " + id
-                        )
-                );
+        Gallery gallery =
+                galleryRepository.findById(id)
+                        .filter(Gallery::isActive)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Gallery item not found with id "
+                                                + id
+                                )
+                        );
 
         return mapToDTO(gallery);
     }
-
 
     // =========================================================
     // UPDATE GALLERY
@@ -161,15 +173,17 @@ public class GalleryService {
     public GalleryResponseDTO updateGallery(
             Long id,
             GalleryRequestDTO dto,
-            MultipartFile file) {
+            MultipartFile file
+    ) {
 
-        Gallery gallery = galleryRepository
-                .findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Gallery item not found with id " + id
-                        )
-                );
+        Gallery gallery =
+                galleryRepository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Gallery item not found with id "
+                                                + id
+                                )
+                        );
 
         // ---------------------------------------------
         // Update basic metadata
@@ -181,20 +195,20 @@ public class GalleryService {
         gallery.setSortOrder(dto.getSortOrder());
         gallery.setActive(dto.isActive());
 
-
         // ---------------------------------------------
-        // Replace media only if a new file was provided
+        // Replace media only if new file is provided
         // ---------------------------------------------
 
         if (file != null && !file.isEmpty()) {
-
-            validateFile(file);
 
             GalleryMediaType newMediaType =
                     determineMediaType(file);
 
             Map<String, Object> uploadResult =
-                    uploadToCloudinary(file, newMediaType);
+                    uploadToCloudinary(
+                            file,
+                            newMediaType
+                    );
 
             String newMediaUrl =
                     (String) uploadResult.get("secure_url");
@@ -202,7 +216,8 @@ public class GalleryService {
             String newPublicId =
                     (String) uploadResult.get("public_id");
 
-            if (newMediaUrl == null || newPublicId == null) {
+            if (newMediaUrl == null
+                    || newPublicId == null) {
 
                 throw new RuntimeException(
                         "Cloudinary upload failed: missing media information"
@@ -210,8 +225,11 @@ public class GalleryService {
             }
 
             // Keep old media information until DB update succeeds
-            String oldPublicId = gallery.getPublicId();
-            GalleryMediaType oldMediaType = gallery.getMediaType();
+            String oldPublicId =
+                    gallery.getPublicId();
+
+            GalleryMediaType oldMediaType =
+                    gallery.getMediaType();
 
             try {
 
@@ -227,7 +245,8 @@ public class GalleryService {
                 // Now remove old Cloudinary asset.
                 // -----------------------------------------
 
-                if (oldPublicId != null && !oldPublicId.isBlank()) {
+                if (oldPublicId != null
+                        && !oldPublicId.isBlank()) {
 
                     try {
 
@@ -238,13 +257,14 @@ public class GalleryService {
 
                     } catch (Exception cleanupException) {
 
-                        // Do not invalidate the successful DB update
-                        // because the old Cloudinary asset could not
+                        // Do not invalidate successful DB update
+                        // because old Cloudinary asset could not
                         // be removed.
 
                         System.err.println(
                                 "Warning: Old Cloudinary asset could not be deleted. "
-                                        + "publicId=" + oldPublicId
+                                        + "publicId="
+                                        + oldPublicId
                         );
                     }
                 }
@@ -255,7 +275,7 @@ public class GalleryService {
 
                 // DB update failed.
                 // Delete newly uploaded asset because DB still
-                // points to the old asset.
+                // points to old asset.
 
                 deleteFromCloudinary(
                         newPublicId,
@@ -269,7 +289,6 @@ public class GalleryService {
             }
         }
 
-
         // ---------------------------------------------
         // Metadata-only update
         // ---------------------------------------------
@@ -280,24 +299,29 @@ public class GalleryService {
         return mapToDTO(updatedGallery);
     }
 
-
     // =========================================================
     // DELETE GALLERY
     // =========================================================
 
     @Transactional
-    public void deleteGallery(Long id) {
+    public void deleteGallery(
+            Long id
+    ) {
 
-        Gallery gallery = galleryRepository
-                .findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Gallery item not found with id " + id
-                        )
-                );
+        Gallery gallery =
+                galleryRepository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Gallery item not found with id "
+                                                + id
+                                )
+                        );
 
-        String publicId = gallery.getPublicId();
-        GalleryMediaType mediaType = gallery.getMediaType();
+        String publicId =
+                gallery.getPublicId();
+
+        GalleryMediaType mediaType =
+                gallery.getMediaType();
 
         // ---------------------------------------------
         // Delete DB record first
@@ -309,7 +333,8 @@ public class GalleryService {
         // Then delete Cloudinary asset
         // ---------------------------------------------
 
-        if (publicId != null && !publicId.isBlank()) {
+        if (publicId != null
+                && !publicId.isBlank()) {
 
             try {
 
@@ -321,67 +346,60 @@ public class GalleryService {
             } catch (Exception e) {
 
                 // DB record is already removed.
-                // Log the cleanup problem for later handling.
+                // Log cleanup problem.
+
                 System.err.println(
                         "Warning: Gallery deleted from database, "
                                 + "but Cloudinary asset could not be deleted. "
-                                + "publicId=" + publicId
+                                + "publicId="
+                                + publicId
                 );
             }
         }
     }
-
-
-    // =========================================================
-    // FILE VALIDATION
-    // =========================================================
-
-    private void validateFile(MultipartFile file) {
-
-        if (file == null || file.isEmpty()) {
-
-            throw new IllegalArgumentException(
-                    "Gallery file is required"
-            );
-        }
-    }
-
 
     // =========================================================
     // DETERMINE MEDIA TYPE
     // =========================================================
 
     private GalleryMediaType determineMediaType(
-            MultipartFile file) {
+            MultipartFile file
+    ) {
 
-        String contentType = file.getContentType();
+        // Single centralized validation
+        galleryFileValidator.validate(file);
 
-        if (contentType == null) {
+        String contentType =
+                file.getContentType();
+
+        if (contentType == null
+                || contentType.isBlank()) {
 
             throw new IllegalArgumentException(
-                    "Unable to determine file type"
+                    "File content type is required"
             );
         }
 
-        if (contentType.startsWith("image/")) {
+        contentType =
+                contentType
+                        .trim()
+                        .toLowerCase();
 
-            galleryFileValidator.validateImage(file);
+        if (contentType.startsWith("image/")) {
 
             return GalleryMediaType.IMAGE;
         }
 
         if (contentType.startsWith("video/")) {
 
-            galleryFileValidator.validateVideo(file);
-
             return GalleryMediaType.VIDEO;
         }
 
         throw new IllegalArgumentException(
-                "Unsupported gallery media type: " + contentType
+                "Unsupported gallery media type: "
+                        + contentType
         );
     }
-
 
     // =========================================================
     // CLOUDINARY UPLOAD
@@ -389,7 +407,8 @@ public class GalleryService {
 
     private Map<String, Object> uploadToCloudinary(
             MultipartFile file,
-            GalleryMediaType mediaType) {
+            GalleryMediaType mediaType
+    ) {
 
         if (mediaType == GalleryMediaType.IMAGE) {
 
@@ -399,14 +418,14 @@ public class GalleryService {
         return cloudinaryService.uploadVideo(file);
     }
 
-
     // =========================================================
     // CLOUDINARY DELETE
     // =========================================================
 
     private void deleteFromCloudinary(
             String publicId,
-            GalleryMediaType mediaType) {
+            GalleryMediaType mediaType
+    ) {
 
         if (mediaType == GalleryMediaType.IMAGE) {
 

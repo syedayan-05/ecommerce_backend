@@ -2,5 +2,6 @@ package com.ayan.ecommerce.entity;
 
 public enum OtpPurpose {
     EMAIL_VERIFICATION,
-    PASSWORD_RESET
+    PASSWORD_RESET,
+    LOGIN_OTP
 }

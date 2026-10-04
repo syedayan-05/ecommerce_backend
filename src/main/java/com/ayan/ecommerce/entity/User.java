@@ -44,7 +44,7 @@ public class User {
     private boolean verified;
 
     @Column(unique = true,length = 10)
-    @Pattern(regexp="^[0-9]{10}$",message = "Please enter mobile number")
+    @Pattern(regexp = "^[6-9]\\d{9}$",message = "Please enter mobile number")
     private String phoneNumber;
 
 
